@@ -115,13 +115,21 @@ class KeyboardWatcher(threading.Thread):
                 log.debug("Can't open %s: %s", path, e)
                 self._rejected.add(path)
                 continue
-            if device.name in self.ignore_names or not _is_keyboard(device):
-                device.close()
+            try:
+                if device.name in self.ignore_names or not _is_keyboard(device):
+                    device.close()
+                    self._rejected.add(path)
+                    continue
+                log.info("Watching keyboard %s (%s)", device.name, path)
+                self.devices[path] = device
+                self._selector.register(device, selectors.EVENT_READ)
+            except OSError as e:
+                log.debug("Device %s failed during inspection: %s", path, e)
                 self._rejected.add(path)
-                continue
-            log.info("Watching keyboard %s (%s)", device.name, path)
-            self.devices[path] = device
-            self._selector.register(device, selectors.EVENT_READ)
+                try:
+                    device.close()
+                except OSError:
+                    pass
 
     def _drain(self, device) -> None:
         try:

@@ -158,6 +158,25 @@ def test_device_that_fails_to_open_is_skipped():
     assert w.devices == {}
 
 
+def test_device_that_fails_during_inspection_is_skipped():
+    bad = FakeDevice("/dev/input/event1")
+    good = FakeDevice("/dev/input/event2")
+
+    def bad_capabilities():
+        raise OSError(19, "No such device")
+
+    bad.capabilities = bad_capabilities
+    fake = FakeInput([bad, good])
+    w = watcher(fake)
+    w._rescan()
+    assert "/dev/input/event1" not in w.devices
+    assert "/dev/input/event2" in w.devices
+    assert "/dev/input/event1" in w._rejected
+    # Verify it's not reopened on the next scan
+    w._rescan()
+    assert fake.opens.count("/dev/input/event1") == 1
+
+
 def test_drain_feeds_detector_and_calls_back():
     kbd = FakeDevice("/dev/input/event1")
     calls = []
