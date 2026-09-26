@@ -1,0 +1,16 @@
+[Unit]
+Description=Emoji picker (double-tap right Shift)
+PartOf=graphical-session.target
+After=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Environment=PYTHONPATH=%h/projects/emoji-picker/src
+ExecStart=/usr/bin/python3 -m emoji_picker
+Restart=on-failure
+RestartSec=2
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=graphical-session.target
