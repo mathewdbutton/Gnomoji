@@ -34,8 +34,11 @@ The unit expects the repo at `~/projects/emoji-picker`. Edit `PYTHONPATH` in the
 | Type | Search (the first match is selected) |
 | Arrows | Move the selection |
 | Enter | Insert the selected emoji (does nothing if none is selected) |
+| Click | Insert the clicked emoji |
+| Page Up / Page Down | Scroll a page at a time |
 | Esc | Close |
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
+| `python3 -m emoji_picker` again | Toggles the picker (open if closed, close if open) |
 
 ## Configuration
 
@@ -59,8 +62,9 @@ installed at each step and how to remove all of it, see [UNINSTALL.md](UNINSTALL
 
 - Logs: `journalctl --user -u emoji-picker -f`
 - Nothing happens on double-tap: check the logs for a permissions message.
-- The emoji didn't paste into some app: it's still on the clipboard for about a second. Set
-  `restore_clipboard = false` if that app needs a manual paste.
+- The emoji didn't paste into some app: it's still on the clipboard for a fraction of a second
+  (`paste_delay_ms` + `restore_delay_ms`). Set `restore_clipboard = false` if that app needs a
+  manual paste.
 
 ## Development
 
