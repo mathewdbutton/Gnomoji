@@ -39,14 +39,19 @@ def load(path: Path = DEFAULT_PATH) -> Config:
     for name, f in known.items():
         if name not in raw:
             continue
-        if _valid(f.type, raw[name]):
+        if _valid(f.type, raw[name], MIN_INT.get(name, 0)):
             values[name] = raw[name]
         else:
             log.warning("Invalid %s = %r in %s; using default %r", name, raw[name], path, f.default)
     return Config(**values)
 
 
-def _valid(expected: type, value: object) -> bool:
+# double_tap_ms must be positive or every tap is rejected (held > 0 in DoubleTapDetector);
+# the other int fields are delays, which are meaningful at 0.
+MIN_INT = {"double_tap_ms": 50}
+
+
+def _valid(expected: type, value: object, minimum: int = 0) -> bool:
     if expected is bool:
         return isinstance(value, bool)
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum

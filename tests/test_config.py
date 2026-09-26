@@ -43,6 +43,12 @@ def test_negative_int_rejected(tmp_path):
     assert load(write(tmp_path, "restore_delay_ms = -5\n")).restore_delay_ms == 300
 
 
+def test_double_tap_ms_zero_falls_back_to_default(tmp_path, caplog):
+    c = load(write(tmp_path, "double_tap_ms = 0\n"))
+    assert c.double_tap_ms == 300
+    assert "double_tap_ms" in caplog.text
+
+
 def test_malformed_toml_gives_defaults(tmp_path, caplog):
     assert load(write(tmp_path, "this is = = not toml")) == Config()
     assert "config" in caplog.text.lower()
