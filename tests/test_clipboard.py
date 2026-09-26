@@ -116,6 +116,20 @@ def test_arm_switches_the_decoy_to_the_emoji():
     assert served_by_gtk(ours) == "🎉"
 
 
+def test_arm_callback_fires_once_when_the_emoji_is_read():
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.claim("🎉", decoy=True)
+    reads = []
+    served_by_gtk(cb.content)  # Mutter's decoy read before arming doesn't count
+    keeper.arm(on_read=lambda: reads.append(1))
+    assert reads == []
+    assert served_by_gtk(cb.content) == "🎉"
+    assert served_by_gtk(cb.content) == "🎉"
+    assert reads == [1]
+
+
 def test_claim_without_decoy_serves_the_emoji_immediately():
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)

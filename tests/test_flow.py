@@ -34,8 +34,9 @@ class World:
     def claim(self, emoji, decoy):
         self.log.append(f"claim {emoji} decoy={decoy}")
 
-    def arm(self):
+    def arm(self, on_read=None):
         self.log.append("arm")
+        self.on_read = on_read
 
     def release(self):
         self.log.append("release")
@@ -147,3 +148,38 @@ def test_paste_failure_clears_busy():
     w.run_timer()
     assert not w.flow.busy
     assert w.timers == []
+
+
+def test_release_follows_the_apps_read_instead_of_waiting_the_full_delay():
+    w = World()
+    w.flow.pick(POPPER)
+    w.run_timer()  # paste delay: arm + paste, fallback scheduled
+    w.on_read()  # the target app reads the emoji
+    assert [ms for ms, _ in w.timers] == [300, 50]
+    _, fn = w.timers.pop(1)
+    fn()
+    assert w.log[-1] == "release"
+    assert not w.flow.busy
+    w.run_timer()  # the 300 ms fallback now does nothing
+    assert w.log.count("release") == 1
+
+
+def test_stale_fallback_does_not_release_a_later_pick():
+    w = World()
+    w.flow.pick(POPPER)
+    w.run_timer()
+    w.on_read()
+    fallback = w.timers.pop(0)[1]
+    w.timers.pop(0)[1]()  # early release
+    w.flow.pick(POPPER)  # a second pick starts
+    w.run_timer()  # its paste
+    fallback()  # the first pick's fallback fires late
+    assert w.log.count("release") == 1
+    assert w.flow.busy
+
+
+def test_no_read_callback_when_restore_disabled():
+    w = World(Config(restore_clipboard=False))
+    w.flow.pick(POPPER)
+    w.run_timer()
+    assert w.on_read is None

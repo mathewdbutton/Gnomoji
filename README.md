@@ -47,7 +47,7 @@ Optional `~/.config/emoji-picker/config.toml`:
 ```toml
 double_tap_ms = 300       # max gap between taps
 restore_clipboard = true  # set false to leave the emoji on the clipboard
-restore_delay_ms = 300    # wait before restoring the clipboard
+restore_delay_ms = 300    # restore after this if no app reads the emoji (normally ~50 ms after it's read)
 paste_delay_ms = 80       # wait for focus to return before pasting
 ```
 
@@ -62,8 +62,8 @@ installed at each step and how to remove all of it, see [UNINSTALL.md](UNINSTALL
 
 - Logs: `journalctl --user -u emoji-picker -f`
 - Nothing happens on double-tap: check the logs for a permissions message.
-- The emoji didn't paste into some app: it's still on the clipboard for about
-  `restore_delay_ms` (default 300 ms) after being sent. Set `restore_clipboard = false` if that
+- The emoji didn't paste into some app: nothing read it, so it stays on the
+  clipboard for `restore_delay_ms` (default 300 ms) after being sent. Set `restore_clipboard = false` if that
   app needs a manual paste.
 - Picker never appears / very slow first open: check `fc-match "Noto Color Emoji" file`. If it
   points at a vector `NotoColorEmoji-Regular.ttf` instead of Ubuntu's bitmap `NotoColorEmoji.ttf`,

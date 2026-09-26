@@ -19,7 +19,8 @@ paste chord, and we hand ownership back afterwards rather than holding it foreve
    image clipboard, serve the emoji from the start; nothing better is possible.)
 2. **arm** (`arm`): right before sending the paste chord, switch the provider to
    serve the emoji, so the target app's paste request gets it.
-3. **release** (`release`): once the paste has gone through, if the clipboard is
+3. **release** (`release`): once the paste has gone through (`arm(on_read=...)`
+   reports the target app's read), if the clipboard is
    still ours, call `set_content(None)` to give up ownership. Mutter then serves its
    cached copy -- the decoy, i.e. the old text -- with no further help from us, even
    if our process exits right after.
@@ -35,6 +36,7 @@ give it up (release); we never claim a second time.
 """
 
 import logging
+from collections.abc import Callable
 
 import gi
 
@@ -50,6 +52,8 @@ class SwitchingText(Gdk.ContentProvider):
     def __init__(self, text: str):
         super().__init__()
         self.text = text
+        # One-shot: called on the next read, then cleared.
+        self.on_read: Callable[[], None] | None = None
 
     def do_ref_formats(self) -> Gdk.ContentFormats:
         builder = Gdk.ContentFormatsBuilder.new()
@@ -59,6 +63,12 @@ class SwitchingText(Gdk.ContentProvider):
     def do_get_value(self):
         # PyGObject 3.48 returns the caller-allocated GValue: (success, value).
         # GTK serialises the string to text/plain for other apps.
+        if self.on_read is not None:
+            callback, self.on_read = self.on_read, None
+            try:
+                callback()
+            except Exception:
+                log.exception("Clipboard read callback failed")
         return True, self.text
 
 
@@ -126,8 +136,12 @@ class ClipboardKeeper:
         self._ours = self._served = SwitchingText(text)
         self._cb.set_content(self._ours)
 
-    def arm(self) -> None:
+    def arm(self, on_read: Callable[[], None] | None = None) -> None:
         """Switch the served text to the emoji, right before sending the paste chord.
+
+        `on_read`, if given, is called once, the first time anything reads the
+        emoji from us (normally the target app answering the paste chord). It
+        runs inside GTK's read, so it should only schedule work, not release.
 
         Does nothing if we've never claimed (or have already released). This only
         checks whether we're holding a claimed provider, not whether the clipboard
@@ -137,6 +151,7 @@ class ClipboardKeeper:
         """
         if self._ours is not None:
             self._ours.text = self._emoji
+            self._ours.on_read = on_read
 
     def release(self) -> bool:
         """Give up ownership, if the clipboard is still ours.

@@ -12,6 +12,11 @@ from .emoji_data import Emoji
 
 log = logging.getLogger(__name__)
 
+# Once the target app has read the emoji, release after this short grace period
+# (in case it reads more than once). `restore_delay_ms` stays as the fallback for
+# when nothing reads it, e.g. the paste landed nowhere.
+RELEASE_AFTER_READ_MS = 50
+
 
 class PasteFlow:
     def __init__(
@@ -30,6 +35,8 @@ class PasteFlow:
         self._config = config
         self._schedule = schedule
         self._busy = False
+        self._paste_id = 0
+        self._pending_release: int | None = None
 
     @property
     def busy(self) -> bool:
@@ -61,20 +68,31 @@ class PasteFlow:
             raise
 
     def _paste(self) -> None:
-        self._clipboard.arm()
+        on_read = None
+        if self._config.restore_clipboard:
+            self._paste_id += 1
+            paste_id = self._pending_release = self._paste_id
+            on_read = lambda: self._schedule(RELEASE_AFTER_READ_MS, lambda: self._restore(paste_id, "after read"))
+        self._clipboard.arm(on_read=on_read)
         try:
             self._injector.paste()
         except OSError as e:
             log.error("Paste failed (emoji left on clipboard): %s", e)
+            self._pending_release = None
             self._busy = False
             return
         if self._config.restore_clipboard:
-            self._schedule(self._config.restore_delay_ms, self._restore)
+            self._schedule(self._config.restore_delay_ms, lambda: self._restore(paste_id, "no read, fallback"))
         else:
             self._busy = False
 
-    def _restore(self) -> None:
+    def _restore(self, paste_id: int, reason: str) -> None:
+        """Release once per paste: whichever of the read or the fallback timer comes first."""
+        if self._pending_release != paste_id:
+            return
+        self._pending_release = None
         try:
-            self._clipboard.release()
+            if self._clipboard.release():
+                log.info("Clipboard handed back (%s)", reason)
         finally:
             self._busy = False
