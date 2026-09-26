@@ -38,6 +38,8 @@ class FakeClipboard:
         return result
 
     def set_content(self, provider):
+        # A real Gdk.Clipboard accepts None here too (that's how ownership is
+        # given up); this fake just stores whatever it's handed.
         self.content = provider
 
     def get_content(self):
@@ -70,67 +72,92 @@ def test_switching_text_serves_current_text_through_gtk():
     assert served_by_gtk(provider) == "ORIGINAL"
 
 
-def test_restore_swaps_served_text_without_reclaiming():
+def test_claim_with_decoy_serves_the_saved_text():
+    # Mutter reads text/plain the instant we claim, so the decoy makes its
+    # instant copy the old text rather than the emoji.
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)
     keeper.save()
     assert keeper.saved_text == "ORIGINAL"
-    keeper.set_text("🎉")
+    keeper.claim("🎉", decoy=True)
+    assert served_by_gtk(cb.content) == "ORIGINAL"
+
+
+def test_arm_switches_the_decoy_to_the_emoji():
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.claim("🎉", decoy=True)
     ours = cb.content
+    keeper.arm()
+    assert cb.content is ours  # arm doesn't re-claim
     assert served_by_gtk(ours) == "🎉"
-    assert keeper.restore() is True
-    assert cb.content is ours  # no second claim
-    assert served_by_gtk(ours) == "ORIGINAL"
 
 
-def test_image_only_clipboard_leaves_emoji_in_place():
+def test_claim_without_decoy_serves_the_emoji_immediately():
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.claim("🎉", decoy=False)
+    assert served_by_gtk(cb.content) == "🎉"
+
+
+def test_release_gives_up_ownership_and_returns_true_when_still_ours():
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.claim("🎉", decoy=True)
+    keeper.arm()
+    assert keeper.release() is True
+    assert cb.content is None  # Mutter now serves its own cached copy
+
+
+def test_image_only_clipboard_serves_the_emoji_from_claim():
     cb = FakeClipboard(image=True)
     keeper = ClipboardKeeper(cb)
     keeper.save()
-    keeper.set_text("🎉")
-    assert keeper.restore() is False
+    keeper.claim("🎉", decoy=True)
     assert served_by_gtk(cb.content) == "🎉"
 
 
-def test_empty_clipboard_leaves_emoji_in_place():
+def test_empty_clipboard_serves_the_emoji_from_claim():
     cb = FakeClipboard()
     keeper = ClipboardKeeper(cb)
     keeper.save()
-    keeper.set_text("🎉")
-    assert keeper.restore() is False
+    keeper.claim("🎉", decoy=True)
     assert served_by_gtk(cb.content) == "🎉"
 
 
-def test_does_not_touch_clipboard_the_user_changed_meanwhile():
+def test_does_not_release_the_clipboard_the_user_changed_meanwhile():
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)
     keeper.save()
-    keeper.set_text("🎉")
+    keeper.claim("🎉", decoy=True)
     users_copy = Gdk.ContentProvider.new_for_value("user copied this")
     cb.content = users_copy
-    assert keeper.restore() is False
+    assert keeper.release() is False
     assert cb.content is users_copy
 
 
-def test_keeper_keeps_a_reference_to_the_served_provider_after_restore():
+def test_keeper_keeps_a_reference_to_the_served_provider_after_release():
     # The keeper is the only Python-level reference keeping the provider (and its
-    # .text) alive for GTK to keep serving while the C-side data source lives on.
+    # .text) alive for as long as GTK's C side might still hold it.
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)
     keeper.save()
-    keeper.set_text("🎉")
+    keeper.claim("🎉", decoy=True)
     served = cb.content
-    assert keeper.restore() is True
+    assert keeper.release() is True
     assert keeper._served is served
 
 
-def test_restore_only_once():
+def test_release_only_once():
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)
     keeper.save()
-    keeper.set_text("🎉")
-    assert keeper.restore() is True
-    assert keeper.restore() is False
+    keeper.claim("🎉", decoy=True)
+    assert keeper.release() is True
+    assert keeper.release() is False
 
 
 def test_stale_read_from_previous_save_is_ignored():
@@ -144,10 +171,10 @@ def test_stale_read_from_previous_save_is_ignored():
     assert keeper.saved_text == "NEW"
 
 
-def test_read_failure_saves_nothing_and_does_not_raise():
+def test_read_failure_saves_nothing_and_serves_emoji_from_claim():
     cb = FakeClipboard(text="ORIGINAL", fail=True)
     keeper = ClipboardKeeper(cb)
     keeper.save()
     assert keeper.saved_text is None
-    keeper.set_text("🎉")
-    assert keeper.restore() is False
+    keeper.claim("🎉", decoy=True)
+    assert served_by_gtk(cb.content) == "🎉"
