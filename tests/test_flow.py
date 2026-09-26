@@ -31,11 +31,14 @@ class World:
     def save(self):
         self.log.append("save")
 
-    def set_text(self, text):
-        self.log.append(f"set_text {text}")
+    def claim(self, emoji, decoy):
+        self.log.append(f"claim {emoji} decoy={decoy}")
 
-    def restore(self):
-        self.log.append("restore")
+    def arm(self):
+        self.log.append("arm")
+
+    def release(self):
+        self.log.append("release")
         return True
 
     # injector
@@ -78,13 +81,14 @@ def test_pick_runs_full_sequence_with_configured_delays():
     w.run_timer()
     w.run_timer()
     assert w.log == [
+        "claim 🎉 decoy=True",
         "recent 🎉",
-        "set_text 🎉",
         "dismiss",
         "after 80",
+        "arm",
         "paste",
         "after 300",
-        "restore",
+        "release",
     ]
     assert not w.flow.busy
 
@@ -105,25 +109,27 @@ def test_second_pick_while_busy_is_ignored():
     w = World()
     w.flow.pick(POPPER)
     w.flow.pick(POPPER)
-    assert w.log.count("set_text 🎉") == 1
+    assert w.log.count("claim 🎉 decoy=True") == 1
 
 
 def test_no_restore_when_disabled():
     w = World(Config(restore_clipboard=False))
     w.flow.pick(POPPER)
+    assert w.log[0] == "claim 🎉 decoy=False"
     w.run_timer()
     assert w.timers == []
-    assert "restore" not in w.log
+    assert "release" not in w.log
+    assert w.log[-1] == "paste"  # arm() ran too (harmless: already serving the emoji)
     assert not w.flow.busy
 
 
-def test_pick_resets_busy_and_reraises_when_set_text_raises():
+def test_pick_resets_busy_and_reraises_when_claim_raises():
     w = World()
 
-    def boom(text):
+    def boom(emoji, decoy):
         raise ValueError("boom")
 
-    w.set_text = boom
+    w.claim = boom
     try:
         w.flow.pick(POPPER)
         raised = False

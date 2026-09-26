@@ -1,4 +1,8 @@
-"""Sequencing for show/hide and pick → clipboard → paste → restore. No GTK."""
+"""Sequencing for show/hide and pick → claim → paste → release. No GTK.
+
+See clipboard.py's module docstring for why the clipboard step is claim (with a
+decoy)/arm/release rather than claim-and-swap-back.
+"""
 
 import logging
 from collections.abc import Callable
@@ -48,8 +52,8 @@ class PasteFlow:
             return
         self._busy = True
         try:
+            self._clipboard.claim(emoji.char, decoy=self._config.restore_clipboard)
             self._recents.add(emoji.char)
-            self._clipboard.set_text(emoji.char)
             self._window.dismiss()
             self._schedule(self._config.paste_delay_ms, self._paste)
         except Exception:
@@ -57,6 +61,7 @@ class PasteFlow:
             raise
 
     def _paste(self) -> None:
+        self._clipboard.arm()
         try:
             self._injector.paste()
         except OSError as e:
@@ -70,6 +75,6 @@ class PasteFlow:
 
     def _restore(self) -> None:
         try:
-            self._clipboard.restore()
+            self._clipboard.release()
         finally:
             self._busy = False
