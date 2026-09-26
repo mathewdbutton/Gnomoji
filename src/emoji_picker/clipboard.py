@@ -109,7 +109,14 @@ class ClipboardKeeper:
         self._cb.set_content(self._ours)
 
     def arm(self) -> None:
-        """Switch the served text to the emoji, right before sending the paste chord."""
+        """Switch the served text to the emoji, right before sending the paste chord.
+
+        Does nothing if we've never claimed (or have already released). This only
+        checks whether we're holding a claimed provider, not whether the clipboard
+        is still actually ours right now -- if the user copied something else in
+        the meantime, this still flips `_ours.text`, harmlessly, since nothing
+        reads it any more; `release()` is what checks live ownership.
+        """
         if self._ours is not None:
             self._ours.text = self._emoji
 

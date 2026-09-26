@@ -119,7 +119,8 @@ def test_no_restore_when_disabled():
     w.run_timer()
     assert w.timers == []
     assert "release" not in w.log
-    assert w.log[-1] == "paste"  # arm() ran too (harmless: already serving the emoji)
+    assert w.log[-2] == "arm"  # arm() ran too (harmless: already serving the emoji)
+    assert w.log[-1] == "paste"
     assert not w.flow.busy
 
 
