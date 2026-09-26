@@ -82,6 +82,7 @@ class KeyboardWatcher(threading.Thread):
         ignore_names=frozenset(),
         list_devices=evdev.list_devices,
         open_device=evdev.InputDevice,
+        on_crash: Callable[[], object] | None = None,
     ):
         super().__init__(daemon=True, name="keyboard-watcher")
         self.detector = detector
@@ -92,8 +93,17 @@ class KeyboardWatcher(threading.Thread):
         self._selector = selectors.DefaultSelector()
         self.devices: dict[str, object] = {}
         self._rejected: set[str] = set()
+        self.on_crash = on_crash
 
     def run(self) -> None:
+        try:
+            self._run_loop()
+        except Exception:
+            log.exception("Keyboard watcher crashed; the picker will stop responding")
+            if self.on_crash is not None:
+                self.on_crash()
+
+    def _run_loop(self) -> None:
         next_scan = 0.0
         while True:
             now = time.monotonic()

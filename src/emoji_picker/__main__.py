@@ -1,6 +1,7 @@
 """Entry point: python3 -m emoji_picker"""
 
 import logging
+import os
 import sys
 
 import gi
@@ -31,6 +32,25 @@ def _schedule(ms: int, fn) -> None:
     GLib.timeout_add(ms, once)
 
 
+def _exit_on_watcher_crash() -> None:
+    """Called from the watcher thread once it has died (trigger.KeyboardWatcher.run
+    already logged the traceback). The double-tap trigger is the only way into the
+    app, so a dead watcher must take the whole process down rather than leave a
+    silently-broken service running.
+
+    We marshal onto the GTK main loop with GLib.idle_add (required even though
+    os._exit is thread-safe, to satisfy the "marshal to the main loop" contract and
+    keep all GLib-adjacent calls on one thread), then call os._exit(1) there. We
+    pick os._exit over quitting the Adw.Application and returning a stored failure
+    code from main(): Gio.Application.run() always returns 0 after quit(), so that
+    route needs an extra mutable flag threaded back out of the class; os._exit(1)
+    gets a guaranteed non-zero (and non-78, so systemd's Restart=on-failure fires)
+    exit status in one line, and there is no cleanup worth doing once we know the
+    trigger is dead.
+    """
+    GLib.idle_add(lambda: os._exit(1))
+
+
 class EmojiPickerApp(Adw.Application):
     def __init__(self, config: config_module.Config, data: EmojiData, injector: Injector):
         super().__init__(application_id=APP_ID)
@@ -57,6 +77,7 @@ class EmojiPickerApp(Adw.Application):
             DoubleTapDetector(self._config.double_tap_ms),
             on_double_tap=lambda: GLib.idle_add(self._toggle_from_key),
             ignore_names={Injector.NAME},
+            on_crash=_exit_on_watcher_crash,
         ).start()
         log.info("Ready: double-tap right Shift to open the picker")
 

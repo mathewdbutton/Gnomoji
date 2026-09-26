@@ -212,3 +212,16 @@ def test_check_access_raises_when_nodes_exist_but_none_readable():
 
 def test_check_access_passes_when_something_readable():
     check_access(list_devices=lambda: ["/dev/input/event0"], event_nodes=["/dev/input/event0"])
+
+
+# --- KeyboardWatcher crash handling -----------------------------------------
+
+
+def test_run_calls_on_crash_and_returns_when_loop_raises(caplog):
+    fake = FakeInput([])
+    fake.list_devices = lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+    calls = []
+    w = watcher(fake, on_crash=lambda: calls.append(1))
+    w.run()  # must return, not hang or raise
+    assert calls == [1]
+    assert "boom" in caplog.text or "crash" in caplog.text.lower()
