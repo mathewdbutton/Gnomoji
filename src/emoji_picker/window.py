@@ -170,6 +170,9 @@ class PickerWindow(Adw.ApplicationWindow):
         self._scroll.get_vadjustment().set_value(0)
         self.present()
         self._entry.grab_focus()
+        # GTK can keep is-active True across hide/show, so no notify fires on re-show
+        # and click-away would be ignored. Sync with the current state once here.
+        self._on_active_changed()
 
     def dismiss(self) -> None:
         self._was_active = False
