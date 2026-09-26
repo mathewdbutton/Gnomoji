@@ -1,0 +1,91 @@
+"""Generate src/emoji_picker/data/emoji.json from Unicode + CLDR sources.
+
+One-off, needs network:  /usr/bin/python3 tools/build_emoji_data.py
+The Unicode version is pinned to what fonts-noto-color-emoji on Ubuntu 24.04 can draw.
+"""
+
+import json
+import re
+import urllib.request
+from pathlib import Path
+
+EMOJI_VERSION = "15.1"
+EMOJI_TEST_URL = f"https://unicode.org/Public/emoji/{EMOJI_VERSION}/emoji-test.txt"
+CLDR = "https://raw.githubusercontent.com/unicode-org/cldr-json/main/cldr-json"
+ANNOTATION_URLS = [
+    f"{CLDR}/cldr-annotations-full/annotations/en/annotations.json",
+    f"{CLDR}/cldr-annotations-derived-full/annotationsDerived/en/annotations.json",
+]
+OUT = Path(__file__).resolve().parent.parent / "src" / "emoji_picker" / "data" / "emoji.json"
+
+SKIN_TONES = range(0x1F3FB, 0x1F3FF + 1)
+SKIP_GROUPS = {"Component"}
+LINE = re.compile(
+    r"^(?P<cps>[0-9A-F ]+?)\s*;\s*fully-qualified\s*#\s*\S+\s+E[\d.]+\s+(?P<name>.+)$"
+)
+
+
+def parse_emoji_test(text: str) -> list[dict]:
+    entries, group = [], None
+    for line in text.splitlines():
+        if line.startswith("# group:"):
+            group = line.split(":", 1)[1].strip()
+            continue
+        match = LINE.match(line)
+        if not match or group in SKIP_GROUPS:
+            continue
+        codepoints = [int(cp, 16) for cp in match["cps"].split()]
+        if any(cp in SKIN_TONES for cp in codepoints):
+            continue
+        entries.append(
+            {"emoji": "".join(map(chr, codepoints)), "name": match["name"], "group": group}
+        )
+    return entries
+
+
+def keywords_by_emoji(annotation_docs: list[dict]) -> dict[str, list[str]]:
+    keywords: dict[str, list[str]] = {}
+    for doc in annotation_docs:
+        # Handle both "annotations" and "annotationsDerived" structures
+        if "annotations" in doc:
+            annotations = doc["annotations"].get("annotations", {})
+        elif "annotationsDerived" in doc:
+            annotations = doc["annotationsDerived"].get("annotations", {})
+        else:
+            continue
+        for char, annotation in annotations.items():
+            keywords.setdefault(char, []).extend(annotation.get("default", []))
+    return keywords
+
+
+def attach_keywords(entries: list[dict], keywords: dict[str, list[str]]) -> list[dict]:
+    for entry in entries:
+        raw = keywords.get(entry["emoji"]) or keywords.get(entry["emoji"].replace("️", ""), [])
+        kept: list[str] = []
+        for keyword in (k.lower() for k in raw):
+            if keyword != entry["name"].lower() and keyword not in kept:
+                kept.append(keyword)
+        entry["keywords"] = kept
+    return entries
+
+
+def render(entries: list[dict]) -> str:
+    return "[\n" + ",\n".join(json.dumps(e, ensure_ascii=False) for e in entries) + "\n]\n"
+
+
+def _fetch(url: str) -> str:
+    with urllib.request.urlopen(url, timeout=30) as response:
+        return response.read().decode("utf-8")
+
+
+def main() -> None:
+    entries = parse_emoji_test(_fetch(EMOJI_TEST_URL))
+    docs = [json.loads(_fetch(url)) for url in ANNOTATION_URLS]
+    attach_keywords(entries, keywords_by_emoji(docs))
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(render(entries), encoding="utf-8")
+    print(f"wrote {len(entries)} emoji to {OUT}")
+
+
+if __name__ == "__main__":
+    main()
