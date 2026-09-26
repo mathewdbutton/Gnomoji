@@ -79,6 +79,24 @@ class ClipboardKeeper:
         # Kept for the provider's whole life, even after release() clears _ours,
         # so this keeper (not just GTK's toggle refs) keeps it alive.
         self._served: SwitchingText | None = None
+        # On Wayland, GTK only receives a selection offer while our window has
+        # focus. If the picker is re-shown without `notify::is-active` firing
+        # (GTK can keep is-active True across hide/show), `on_focused` never
+        # calls save() -- but GTK still emits the clipboard's own 'changed'
+        # signal, carrying the now-focused offer, so we use that as a backstop.
+        self._cb.connect("changed", self._on_changed)
+
+    def _on_changed(self, clipboard) -> None:
+        """Re-save on a non-local change that actually carries text.
+
+        Ignores our own claim/release (local=True) and changes with no text
+        formats (e.g. the transient empty-format change right after release),
+        leaving `saved_text` untouched in both cases. The overlapping-read
+        generation counter in `save()` already handles a re-save racing with
+        an earlier one.
+        """
+        if not clipboard.is_local() and clipboard.get_formats().contain_gtype(GObject.TYPE_STRING):
+            self.save()
 
     def save(self) -> None:
         """Snapshot the clipboard text. Call while our window has keyboard focus."""

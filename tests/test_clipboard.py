@@ -16,6 +16,28 @@ class FakeClipboard:
         self.defer, self.fail = defer, fail
         self.pending = []
         self.content = None
+        self._local = False
+        self._changed_handlers = []
+
+    def connect(self, signal, handler):
+        assert signal == "changed"
+        self._changed_handlers.append(handler)
+        return len(self._changed_handlers)
+
+    def is_local(self):
+        return self._local
+
+    def emit_changed(self, local):
+        """Simulate GTK's 'changed' signal, as if the clipboard's offer changed.
+
+        `local` mirrors what `is_local()` should report during the emission.
+        The formats a handler sees during the callback come from whatever
+        `self.text`/`self.image` are set to at that point, same as a real
+        `get_formats()` call.
+        """
+        self._local = local
+        for handler in self._changed_handlers:
+            handler(self)
 
     def get_formats(self):
         builder = Gdk.ContentFormatsBuilder.new()
@@ -178,3 +200,58 @@ def test_read_failure_saves_nothing_and_serves_emoji_from_claim():
     assert keeper.saved_text is None
     keeper.claim("🎉", decoy=True)
     assert served_by_gtk(cb.content) == "🎉"
+
+
+# --- 'changed' signal backstop (bug I2: re-show doesn't always re-fire notify::is-active,
+# but GTK reliably emits the clipboard's own 'changed' with the current offer on focus) ---
+
+
+def test_non_local_change_with_text_triggers_a_fresh_save():
+    cb = FakeClipboard(text="APPLE")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    assert keeper.saved_text == "APPLE"
+    cb.text = "BANANA"
+    cb.emit_changed(local=False)
+    assert keeper.saved_text == "BANANA"
+
+
+def test_local_change_does_not_trigger_a_resave():
+    cb = FakeClipboard(text="APPLE")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    cb.text = "BANANA"  # e.g. our own claim's decoy provider, never actually read
+    cb.emit_changed(local=True)
+    assert keeper.saved_text == "APPLE"
+
+
+def test_non_local_change_with_no_text_formats_does_not_resave_or_clear():
+    cb = FakeClipboard(text="APPLE")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    cb.text = None  # e.g. the transient empty-format 'changed' right after release
+    cb.emit_changed(local=False)
+    assert keeper.saved_text == "APPLE"
+
+
+def test_i2_scenario_second_open_resaves_from_changed_signal():
+    # copy APPLE -> pick emoji -> claim (decoy APPLE) -> arm -> release -> copy
+    # BANANA elsewhere (non-local 'changed' with text, simulating GTK receiving
+    # the offer when our window regains focus) -> pick again -> decoy is BANANA.
+    cb = FakeClipboard(text="APPLE")
+    keeper = ClipboardKeeper(cb)
+
+    keeper.save()
+    assert keeper.saved_text == "APPLE"
+
+    keeper.claim("🎉", decoy=True)
+    keeper.arm()
+    assert keeper.release() is True
+
+    # The user copies BANANA while our window isn't focused; GTK only tells us
+    # about it once we regain focus, as a non-local 'changed' carrying text.
+    cb.text = "BANANA"
+    cb.emit_changed(local=False)
+
+    keeper.claim("🎉", decoy=True)
+    assert served_by_gtk(cb.content) == "BANANA"
