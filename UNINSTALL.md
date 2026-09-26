@@ -22,7 +22,7 @@ keys it was holding down.
 
 | Task | What it adds outside the repo | Rollback |
 |---|---|---|
-| 1. Feasibility spike | A temporary uinput virtual keyboard ("emoji-picker spike keyboard"), removed automatically when the script exits. **Only if you agree during the task:** the GNOME setting `org.gnome.mutter center-new-windows`. | Nothing for the keyboard. `gsettings reset org.gnome.mutter center-new-windows` if it was changed. |
+| 1. Feasibility spike | **Done 2026-09-26. Nothing persisted.** Its temporary virtual keyboard disappeared on exit. `center-new-windows` was **not** changed. Scratch probes lived in a temporary folder (cleared on reboot). | None |
 | 2. Scaffold | **uv**, installed with `UV_NO_MODIFY_PATH=1` so shell rc files are **not** edited (`~/.local/bin` is already on PATH). Adds `~/.local/bin/uv`, `~/.local/bin/uvx`, cache in `~/.cache/uv`, data in `~/.local/share/uv`. `.venv/` lives inside the repo. | `rm -f ~/.local/bin/uv ~/.local/bin/uvx && rm -rf ~/.cache/uv ~/.local/share/uv` |
 | 3. Emoji data | Nothing. Sources are downloaded in memory; only `src/emoji_picker/data/emoji.json` (inside the repo) is written. | None |
 | 4–10 | Nothing installed. Group memberships, udev rules and apt packages are **not** touched. The window preview (Task 10) doesn't write recents. | None |
@@ -43,11 +43,8 @@ rm -rf ~/.local/state/emoji-picker ~/.config/emoji-picker
 # 3. Remove uv (skip if you want to keep it for other projects)
 rm -f ~/.local/bin/uv ~/.local/bin/uvx && rm -rf ~/.cache/uv ~/.local/share/uv
 
-# 4. Only if it was changed during Task 1
-gsettings reset org.gnome.mutter center-new-windows
 
-
-# 6. Remove the project (this also deletes the 'untitled' note in the folder)
+# 5. Remove the project
 rm -rf ~/projects/emoji-picker
 ```
 
@@ -57,5 +54,4 @@ rm -rf ~/projects/emoji-picker
 systemctl --user status emoji-picker          # "Unit emoji-picker.service could not be found."
 ls ~/.local/state/emoji-picker ~/.config/emoji-picker 2>&1   # "No such file or directory"
 command -v uv                                  # no output (if uv was removed)
-gsettings get org.gnome.mutter center-new-windows            # false
 ```
