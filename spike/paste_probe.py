@@ -21,8 +21,10 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from evdev import UInput, ecodes as e  # noqa: E402
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+from evdev import UInput
+from evdev import ecodes as e
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk
+
 
 class SwitchingText(Gdk.ContentProvider):
     """Serves `text` as a string; GTK converts to text/plain for other apps."""
