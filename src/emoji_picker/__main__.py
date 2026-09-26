@@ -4,6 +4,14 @@ import logging
 import os
 import sys
 
+from .fonts import use_fast_emoji_font
+
+# Must run before fontconfig initialises. Empirically, `import gi` and
+# `gi.require_version(...)` alone don't touch fontconfig, but the very first
+# `from gi.repository import <anything>` does -- so this has to come before that
+# import below, not merely before any GTK/Adw object is constructed. See fonts.py.
+use_fast_emoji_font()
+
 import gi
 
 gi.require_version("Gtk", "4.0")

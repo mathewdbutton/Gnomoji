@@ -2,6 +2,14 @@
 
 from collections.abc import Callable
 
+from .fonts import use_fast_emoji_font
+
+# Must run before fontconfig initialises (before the first `from gi.repository import
+# ...` below), so that a direct `python -m emoji_picker.window` preview also gets the
+# fast font -- __main__.py already does this earlier for the normal app path, and this
+# call is then a no-op (FONTCONFIG_FILE is already set). See fonts.py.
+use_fast_emoji_font()
+
 import gi
 
 gi.require_version("Gtk", "4.0")

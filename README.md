@@ -65,6 +65,10 @@ installed at each step and how to remove all of it, see [UNINSTALL.md](UNINSTALL
 - The emoji didn't paste into some app: it's still on the clipboard for a fraction of a second
   (`paste_delay_ms` + `restore_delay_ms`). Set `restore_clipboard = false` if that app needs a
   manual paste.
+- Picker never appears / very slow first open: check `fc-match "Noto Color Emoji" file`. If it
+  points at a vector `NotoColorEmoji-Regular.ttf` instead of Ubuntu's bitmap `NotoColorEmoji.ttf`,
+  that font's first layout can block the GTK main loop for minutes. The picker hides the
+  upstream vector font for itself only (`src/emoji_picker/fonts.py`); nothing system-wide changes.
 
 ## Development
 
