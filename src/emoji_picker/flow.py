@@ -47,10 +47,14 @@ class PasteFlow:
         if self._busy:
             return
         self._busy = True
-        self._recents.add(emoji.char)
-        self._clipboard.set_text(emoji.char)
-        self._window.dismiss()
-        self._schedule(self._config.paste_delay_ms, self._paste)
+        try:
+            self._recents.add(emoji.char)
+            self._clipboard.set_text(emoji.char)
+            self._window.dismiss()
+            self._schedule(self._config.paste_delay_ms, self._paste)
+        except Exception:
+            self._busy = False
+            raise
 
     def _paste(self) -> None:
         try:

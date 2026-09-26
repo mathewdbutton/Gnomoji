@@ -117,6 +117,22 @@ def test_no_restore_when_disabled():
     assert not w.flow.busy
 
 
+def test_pick_resets_busy_and_reraises_when_set_text_raises():
+    w = World()
+
+    def boom(text):
+        raise ValueError("boom")
+
+    w.set_text = boom
+    try:
+        w.flow.pick(POPPER)
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
+    assert not w.flow.busy
+
+
 def test_paste_failure_clears_busy():
     w = World()
     w.paste_error = OSError(19, "No such device")
