@@ -38,6 +38,9 @@ class ClipboardKeeper:
         self._generation = 0
         self.saved_text: str | None = None
         self._ours: SwitchingText | None = None
+        # Kept for the provider's whole life, even after restore() clears _ours,
+        # so this keeper (not just GTK's toggle refs) keeps it alive.
+        self._served: SwitchingText | None = None
 
     def save(self) -> None:
         """Snapshot the clipboard text. Call while our window has keyboard focus."""
@@ -57,7 +60,7 @@ class ClipboardKeeper:
 
     def set_text(self, text: str) -> None:
         """Claim the clipboard. Must run inside an input handler of our window."""
-        self._ours = SwitchingText(text)
+        self._ours = self._served = SwitchingText(text)
         self._cb.set_content(self._ours)
 
     def restore(self) -> bool:

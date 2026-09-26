@@ -112,6 +112,18 @@ def test_does_not_touch_clipboard_the_user_changed_meanwhile():
     assert cb.content is users_copy
 
 
+def test_keeper_keeps_a_reference_to_the_served_provider_after_restore():
+    # The keeper is the only Python-level reference keeping the provider (and its
+    # .text) alive for GTK to keep serving while the C-side data source lives on.
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.set_text("🎉")
+    served = cb.content
+    assert keeper.restore() is True
+    assert keeper._served is served
+
+
 def test_restore_only_once():
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)
