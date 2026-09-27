@@ -16,7 +16,8 @@ Download `emoji-picker_<version>_all.deb` from the
 it. App Center opens; click **Install**. It warns that the package comes from outside the Ubuntu
 store: that's expected for a download like this.
 
-Within a few seconds a notification says the picker is ready. No log-out needed.
+The first time it starts for you, a notification says the picker is ready, within a few
+seconds. No log-out needed (on a reinstall or upgrade it just starts, with no notification).
 
 What the package sets up:
 
@@ -56,7 +57,7 @@ To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_pick
 | Page Up / Page Down | Scroll a page at a time |
 | Esc | Close |
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
-| `emoji-picker` (or `python3 -m emoji_picker`) again | Toggles the picker (open if closed, close if open) |
+| Run `emoji-picker` again (`PYTHONPATH=src python3 -m emoji_picker` from a source checkout) | Toggles the picker (open if closed, close if open) |
 
 ## Configuration
 

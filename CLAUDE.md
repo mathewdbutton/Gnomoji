@@ -109,11 +109,15 @@ the working tree, so the checked-out branch is what runs. A `.deb` install runs 
 
 `packaging/build-deb.sh` builds `emoji-picker_<version>_all.deb` from `git archive HEAD`. The
 version comes from `pyproject.toml`. The service and desktop entry are `install.sh`'s templates
-with `@SRC@` lines removed, so there's one source for each. The maintainer scripts in
-`packaging/deb/` enable the user service globally and restart it in every running user manager
+with `@SRC@` lines removed, so there's one source for each. The unit's `ConditionUser=!@system`
+keeps it off the login screen: `systemctl --global enable` applies to every user manager,
+including system users, and GDM's greeter also runs a user session that reaches
+`graphical-session.target`. The maintainer scripts in `packaging/deb/` enable the user service
+globally and restart it in every running user manager that has an active graphical session
 (`systemctl --user --machine=<user>@.host`). Every step past unpacking is best-effort and never
-fails the install; `prerm upgrade` is a no-op. `tests/test_maintainer_scripts.py` runs them
-against fake `systemctl`/`loginctl`/`udevadm`.
+fails the install; `prerm upgrade` only cleans bytecode (`py3clean`), never stops or disables the
+service. `tests/test_maintainer_scripts.py` runs them against fake
+`systemctl`/`loginctl`/`udevadm`/`py3compile`/`py3clean`.
 
 CI (`.github/workflows/package.yml`) runs the package tests, builds, and install/remove
 smoke-tests (`packaging/smoke-test.sh`) on every PR. To release:

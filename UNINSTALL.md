@@ -40,6 +40,10 @@ rm -rf ~/.local/state/emoji-picker ~/.config/emoji-picker
 Packages installed as dependencies (GTK, libadwaita, the emoji font) stay too. Usually keep them:
 other apps depend on them.
 
+A source install's `/etc/udev/rules.d/70-emoji-picker.rules` (left by `./uninstall.sh` without
+`--purge`) overrides the packaged rule of the same name and keeps keyboard access after
+`apt remove`; `./uninstall.sh --purge` (or `sudo rm` it) removes it.
+
 The rest of this file is about installs from source (`./install.sh`).
 
 ## What gets added

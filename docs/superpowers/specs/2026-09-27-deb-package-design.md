@@ -1,6 +1,6 @@
 # Emoji Picker .deb Package — Design
 
-**Status:** Draft, awaiting user review.
+**Status:** Approved; implemented on build/deb-package.
 **Date:** 2026-09-27
 **Branch:** `build/deb-package`
 
@@ -43,6 +43,9 @@ picker also runs from the development checkout, so switching branches changes wh
   in `/usr/lib/udev/rules.d/`.
 - The code finds `data/` relative to its own file (`emoji_data.py`, `fonts.py`), so it runs
   from any install location unchanged.
+- `systemctl --global enable` applies to every user manager, including system users such as
+  GDM's greeter (whose session reaches `graphical-session.target` too), so the unit carries
+  `ConditionUser=!@system`.
 
 ## Package contents
 
@@ -76,15 +79,21 @@ Maintainer scripts in `packaging/deb/`, run as root by dpkg (via apt or App Cent
 **`postinst` (install and upgrade):**
 
 1. Reload udev and re-trigger input and misc devices (`--action=change`), then
-   `udevadm settle`, so the `uaccess` ACL applies to the active seat user at once.
-2. `systemctl --global enable emoji-picker.service`.
-3. For each user whose systemd user manager is running (e.g. from
-   `loginctl list-users`), run `systemctl --user --machine=<user>@.host daemon-reload` and then
-   `restart emoji-picker`. On a first install this starts it and the existing first-run
-   welcome appears. On an upgrade the new version replaces the old one.
+   `udevadm settle --timeout=10`, so the `uaccess` ACL applies to the active seat user at once
+   without risking an unbounded wait.
+2. `py3compile -p emoji-picker`, so the restarted picker below uses the compiled bytecode.
+3. `systemctl --global enable emoji-picker.service`.
+4. For each user whose systemd user manager is running (e.g. from `loginctl list-users`) **and**
+   whose `graphical-session.target` is active (skipping lingering/SSH-only sessions, which have a
+   user manager but no graphical session), run
+   `systemctl --user --machine=<user>@.host daemon-reload` and then `restart emoji-picker`. On a
+   first install this starts it and the existing first-run welcome appears. On an upgrade the new
+   version replaces the old one.
 
-**`prerm` (remove only, not upgrade):** stop the service in each running user manager, then
-`systemctl --global disable emoji-picker.service`.
+**`prerm` (remove and upgrade):** `py3clean -p emoji-picker` on both, so a root-owned
+`__pycache__` never blocks removal. On remove only: stop the service in each running user
+manager, then `systemctl --global disable emoji-picker.service`. Upgrade never stops or
+disables it.
 
 **`postrm` (remove and purge):** reload udev and re-trigger, so the rule's removal takes
 effect for new devices. Access already granted ends at the next log-in.
@@ -117,16 +126,17 @@ effect for new devices. Access already granted ends at the next log-in.
 
 ## Releasing
 
-`.github/workflows/release.yml`, triggered by pushing a `v*` tag, on `ubuntu-24.04`:
+`.github/workflows/package.yml`, on `ubuntu-24.04`. It runs on every pull request (build and
+smoke-test only, no release) and on pushing a `v*` tag (build, smoke-test, and draft release):
 
-1. Fail unless the tag equals `v` + `pyproject.toml`'s version.
+1. On a tag push: fail unless the tag equals `v` + `pyproject.toml`'s version.
 2. `shellcheck` the build script and the maintainer scripts.
 3. Run `packaging/build-deb.sh`.
 4. Smoke test: `sudo apt install ./dist/*.deb`, check the files are in place and that
    `/usr/bin/python3 -c "import emoji_picker"` works without `PYTHONPATH` (the runner has no
    display, so it doesn't start the picker), then `sudo apt remove emoji-picker` and check the package's files are gone. There is
    no desktop session on the runner, so this also covers the "no session" path of `postinst`.
-5. Create a **draft** GitHub Release for the tag with the `.deb` attached.
+5. On a tag push only: create a **draft** GitHub Release for the tag with the `.deb` attached.
 
 **Author's release steps:** bump `version` in `pyproject.toml`, commit, tag `v<version>`,
 push the tag. Download the draft's `.deb`, install and try it, then publish the release.
@@ -163,8 +173,8 @@ last commit, not uncommitted edits.
    replaced by the new version (check the journal).
 4. Remove via App Center: the picker stops and the package's files are gone.
 5. Install again; this is the daily setup from now on.
-6. Optional: step 1 in a throwaway user account with the keyboard remapper's udev rule moved
-   aside, to prove the packaged rule alone grants access.
+6. Optional: step 1 in a throwaway user account with any other udev rule that grants keyboard
+   access moved aside, to prove the packaged rule alone grants access.
 
 ## Docs
 
