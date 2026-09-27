@@ -117,9 +117,9 @@ globally and restart it in every running user manager that has an active graphic
 (`systemctl --user --machine=<user>@.host`). Every step past unpacking is best-effort and never
 fails the install; `prerm upgrade` only cleans bytecode (`py3clean`), never stops or disables the
 service. `tests/test_maintainer_scripts.py` runs them against fake
-`systemctl`/`loginctl`/`udevadm`/`py3compile`/`py3clean`. A side-loaded .deb without AppStream
-metadata isn't listed in App Center's search or installed list, but reopening the .deb file offers
-Uninstall; a newer .deb shows Install (which upgrades).
+`systemctl`/`loginctl`/`udevadm`/`py3compile`/`py3clean`. App Center never lists a side-loaded
+.deb in its search or installed list, with or without AppStream metadata, but reopening the .deb
+file offers Uninstall, and a newer .deb shows Install (which upgrades).
 
 CI (`.github/workflows/package.yml`) runs the package tests, builds, and install/remove
 smoke-tests (`packaging/smoke-test.sh`) on every PR. To release:

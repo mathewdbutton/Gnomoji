@@ -33,7 +33,7 @@ What the package sets up:
 Prefer a terminal? `sudo apt install ./emoji-picker_<version>_all.deb`
 
 **Updating:** download the newer `.deb` and install it the same way. App Center shows **Install**
-again for the newer version, and that is the update. The running picker switches to the new version.
+again for the newer version, and clicking it does the update. The running picker switches to the new version.
 
 ### From source
 
