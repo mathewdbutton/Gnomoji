@@ -12,6 +12,11 @@ from .fonts import use_fast_emoji_font
 # import below, not merely before any GTK/Adw object is constructed. See fonts.py.
 use_fast_emoji_font()
 
+# GTK's GPU renderer loads Mesa, LLVM and Vulkan (~70 MB RSS) and keeps growing texture
+# caches; software rendering is plenty for a small popup. Set before GTK initialises;
+# an explicit GSK_RENDERER in the environment still wins.
+os.environ.setdefault("GSK_RENDERER", "cairo")
+
 import gi
 
 gi.require_version("Gtk", "4.0")
