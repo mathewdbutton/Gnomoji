@@ -1,0 +1,3 @@
+#!/bin/sh
+# Run the emoji picker. If it's already running, this opens or closes it instead.
+exec /usr/bin/python3 -m emoji_picker "$@"

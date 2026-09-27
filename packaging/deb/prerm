@@ -1,0 +1,14 @@
+#!/bin/sh
+# Runs as root before the package's files are removed. On upgrade it does nothing: postinst
+# restarts the picker with the new version instead.
+set -e
+
+if [ "$1" = remove ]; then
+    loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do
+        systemctl --quiet is-active "user@$uid.service" 2>/dev/null || continue
+        systemctl --user --machine="$user@.host" stop emoji-picker.service || true
+    done
+    systemctl --global disable emoji-picker.service || true
+fi
+
+exit 0
