@@ -100,8 +100,7 @@ network code.
 For that, the udev rule gives the person logged in at the screen direct access to keyboards and
 to the virtual-keyboard device. That access isn't limited to the picker: any program you run gets
 it too, so a malicious program could read your typing or type for you without needing an admin
-password. Keyboard remappers such as keyd or xremap need the same access. The login screen,
-other user accounts and remote logins don't get it. Uninstalling removes the rule; access
+password. Keyboard remappers such as keyd or xremap need the same access. Other user accounts and remote logins don't get it. While the login screen is showing, the access belongs to the login screen's own system account, and the picker doesn't run there. Uninstalling removes the rule; access
 already granted ends when you log out.
 
 The `.deb` is unsigned and its install scripts run as root, so only install one you got from
