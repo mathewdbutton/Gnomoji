@@ -19,8 +19,9 @@ keys it was holding down.
 
 ## If you installed the .deb
 
-Remove "Emoji Picker" in App Center, or `sudo apt remove emoji-picker`. That removes everything
-the package installed:
+Open the .deb you installed from in App Center again and click **Uninstall** (Emoji Picker doesn't
+appear in App Center's search or installed list), or `sudo apt remove emoji-picker`. That removes
+everything the package installed:
 
 | What | Where |
 |---|---|

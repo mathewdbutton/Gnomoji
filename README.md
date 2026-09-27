@@ -32,8 +32,8 @@ What the package sets up:
 
 Prefer a terminal? `sudo apt install ./emoji-picker_<version>_all.deb`
 
-**Updating:** download the newer `.deb` and install it the same way. The running picker switches to
-the new version.
+**Updating:** download the newer `.deb` and install it the same way. App Center shows **Install**
+again for the newer version, and that is the update. The running picker switches to the new version.
 
 ### From source
 
@@ -76,9 +76,11 @@ keeps the previous setting and logs a warning (`journalctl --user -u emoji-picke
 
 ## Uninstall
 
-**Installed from the `.deb`:** remove "Emoji Picker" in App Center, or
-`sudo apt remove emoji-picker`. Your recents and config stay in your home folder; see
-[UNINSTALL.md](UNINSTALL.md) to delete them.
+**Installed from the `.deb`:** open the .deb you installed from in App Center again and click
+**Uninstall** (Emoji Picker doesn't appear in App Center's search or installed list), or
+`sudo apt remove emoji-picker`. If you no longer have the file, the apt command works (or download
+it again). Your recents and config stay in your home folder; see [UNINSTALL.md](UNINSTALL.md) to
+delete them.
 
 **Installed from source:**
 
@@ -108,6 +110,7 @@ keeps the previous setting and logs a warning (`journalctl --user -u emoji-picke
 - The emoji didn't paste into some app: nothing read it, so it stays on the
   clipboard for `restore_delay_ms` (default 300 ms) after being sent. Set `restore_clipboard = false` if that
   app needs a manual paste.
+- App Center shows an error when opening the .deb: close App Center and open the file again.
 - Picker never appears / very slow first open: check `fc-match "Noto Color Emoji" file`. If it
   points at a vector `NotoColorEmoji-Regular.ttf` instead of Ubuntu's bitmap `NotoColorEmoji.ttf`,
   that font's first layout can block the GTK main loop for minutes. The picker hides the

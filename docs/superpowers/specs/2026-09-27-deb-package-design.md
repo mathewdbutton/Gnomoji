@@ -19,8 +19,9 @@ picker also runs from the development checkout, so switching branches changes wh
 
 - A friend downloads a `.deb` from GitHub Releases, double-clicks it, installs it through
   App Center, and within seconds gets the "ready" notification. No terminal, no log-out.
-- Updating means installing the newer `.deb` the same way. Removing works from App Center
-  or `sudo apt remove emoji-picker`.
+- Updating means installing the newer `.deb` the same way (App Center shows **Install** again for
+  the newer version). Removing works by opening the .deb in App Center again (Uninstall) or
+  `sudo apt remove emoji-picker`.
 - The author runs the released `.deb` day to day and develops from the repo separately.
 
 **Decided against:**
@@ -41,6 +42,8 @@ picker also runs from the development checkout, so switching branches changes wh
 - A user unit in `~/.config/systemd/user/` overrides one of the same name in
   `/usr/lib/systemd/user/`, and a rule in `/etc/udev/rules.d/` overrides one of the same name
   in `/usr/lib/udev/rules.d/`.
+- App Center lists a side-loaded .deb without AppStream metadata nowhere, but reopening the
+  .deb file offers Uninstall, and a newer .deb shows Install (which upgrades).
 - The code finds `data/` relative to its own file (`emoji_data.py`, `fonts.py`), so it runs
   from any install location unchanged.
 - `systemctl --global enable` applies to every user manager, including system users such as
