@@ -12,11 +12,6 @@ from .emoji_data import Emoji
 
 log = logging.getLogger(__name__)
 
-# Once the target app has read the emoji, release after this short grace period
-# (in case it reads more than once). `restore_delay_ms` stays as the fallback for
-# when nothing reads it, e.g. the paste landed nowhere.
-RELEASE_AFTER_READ_MS = 50
-
 
 class PasteFlow:
     def __init__(
@@ -68,11 +63,14 @@ class PasteFlow:
             raise
 
     def _paste(self) -> None:
+        # Once the target app has read the emoji, release after release_after_read_ms
+        # (a grace period in case it reads more than once). restore_delay_ms is the
+        # fallback for when nothing reads it, e.g. the paste landed nowhere.
         on_read = None
         if self._config.restore_clipboard:
             self._paste_id += 1
             paste_id = self._pending_release = self._paste_id
-            on_read = lambda: self._schedule(RELEASE_AFTER_READ_MS, lambda: self._restore(paste_id, "after read"))
+            on_read = lambda: self._schedule(self._config.release_after_read_ms, lambda: self._restore(paste_id, "after read"))
         self._clipboard.arm(on_read=on_read)
         try:
             self._injector.paste()

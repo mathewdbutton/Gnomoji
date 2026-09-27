@@ -183,3 +183,11 @@ def test_no_read_callback_when_restore_disabled():
     w.flow.pick(POPPER)
     w.run_timer()
     assert w.on_read is None
+
+
+def test_release_after_read_uses_configured_delay():
+    w = World(Config(release_after_read_ms=120))
+    w.flow.pick(POPPER)
+    w.run_timer()
+    w.on_read()
+    assert [ms for ms, _ in w.timers] == [300, 120]

@@ -19,6 +19,7 @@ class Config:
     restore_clipboard: bool = True
     restore_delay_ms: int = 300
     paste_delay_ms: int = 80
+    release_after_read_ms: int = 50
 
 
 def load(path: Path = DEFAULT_PATH) -> Config:

@@ -47,7 +47,8 @@ Optional `~/.config/emoji-picker/config.toml`:
 ```toml
 double_tap_ms = 300       # max gap between taps
 restore_clipboard = true  # set false to leave the emoji on the clipboard
-restore_delay_ms = 300    # restore after this if no app reads the emoji (normally ~50 ms after it's read)
+restore_delay_ms = 300    # restore after this if no app reads the emoji
+release_after_read_ms = 50  # restore this long after the app reads the emoji
 paste_delay_ms = 80       # wait for focus to return before pasting
 ```
 

@@ -57,3 +57,8 @@ def test_malformed_toml_gives_defaults(tmp_path, caplog):
 def test_unknown_key_is_ignored(tmp_path, caplog):
     assert load(write(tmp_path, "colour = 'red'\n")) == Config()
     assert "colour" in caplog.text
+
+
+def test_release_after_read_ms_defaults_to_50_and_is_configurable(tmp_path):
+    assert Config().release_after_read_ms == 50
+    assert load(write(tmp_path, "release_after_read_ms = 120\n")).release_after_read_ms == 120
