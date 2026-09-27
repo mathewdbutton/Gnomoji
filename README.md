@@ -63,6 +63,8 @@ installed at each step and how to remove all of it, see [UNINSTALL.md](UNINSTALL
 
 - Logs: `journalctl --user -u emoji-picker -f`
 - Nothing happens on double-tap: check the logs for a permissions message.
+- An app pastes your old text instead of the emoji: it read the clipboard late. Raise
+  `release_after_read_ms` (e.g. to 200).
 - The emoji didn't paste into some app: nothing read it, so it stays on the
   clipboard for `restore_delay_ms` (default 300 ms) after being sent. Set `restore_clipboard = false` if that
   app needs a manual paste.

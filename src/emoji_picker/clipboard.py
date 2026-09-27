@@ -52,7 +52,7 @@ class SwitchingText(Gdk.ContentProvider):
     def __init__(self, text: str):
         super().__init__()
         self.text = text
-        # One-shot: called on the next read, then cleared.
+        # Called on every read while set (the flow restarts its release timer each time).
         self.on_read: Callable[[], None] | None = None
 
     def do_ref_formats(self) -> Gdk.ContentFormats:
@@ -64,9 +64,8 @@ class SwitchingText(Gdk.ContentProvider):
         # PyGObject 3.48 returns the caller-allocated GValue: (success, value).
         # GTK serialises the string to text/plain for other apps.
         if self.on_read is not None:
-            callback, self.on_read = self.on_read, None
             try:
-                callback()
+                self.on_read()
             except Exception:
                 log.exception("Clipboard read callback failed")
         return True, self.text
@@ -139,9 +138,9 @@ class ClipboardKeeper:
     def arm(self, on_read: Callable[[], None] | None = None) -> None:
         """Switch the served text to the emoji, right before sending the paste chord.
 
-        `on_read`, if given, is called once, the first time anything reads the
-        emoji from us (normally the target app answering the paste chord). It
-        runs inside GTK's read, so it should only schedule work, not release.
+        `on_read`, if given, is called every time anything reads the emoji from
+        us (normally the target app answering the paste chord) until release().
+        It runs inside GTK's read, so it should only schedule work, not release.
 
         Does nothing if we've never claimed (or have already released). This only
         checks whether we're holding a claimed provider, not whether the clipboard
@@ -164,5 +163,6 @@ class ClipboardKeeper:
         if self._ours is None or self._cb.get_content() is not self._ours:
             return False
         self._cb.set_content(None)
+        self._ours.on_read = None
         self._ours = None
         return True

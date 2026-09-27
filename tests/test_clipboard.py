@@ -116,7 +116,7 @@ def test_arm_switches_the_decoy_to_the_emoji():
     assert served_by_gtk(ours) == "🎉"
 
 
-def test_arm_callback_fires_once_when_the_emoji_is_read():
+def test_arm_callback_fires_on_each_read_of_the_emoji():
     cb = FakeClipboard(text="ORIGINAL")
     keeper = ClipboardKeeper(cb)
     keeper.save()
@@ -127,7 +127,33 @@ def test_arm_callback_fires_once_when_the_emoji_is_read():
     assert reads == []
     assert served_by_gtk(cb.content) == "🎉"
     assert served_by_gtk(cb.content) == "🎉"
-    assert reads == [1]
+    assert reads == [1, 1]  # every read after arm, so the flow can slide its release
+
+
+def test_arm_callback_that_raises_still_serves_the_emoji():
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.claim("🎉", decoy=True)
+
+    def boom():
+        raise RuntimeError("boom")
+
+    keeper.arm(on_read=boom)
+    assert served_by_gtk(cb.content) == "🎉"
+
+
+def test_release_stops_read_callbacks():
+    cb = FakeClipboard(text="ORIGINAL")
+    keeper = ClipboardKeeper(cb)
+    keeper.save()
+    keeper.claim("🎉", decoy=True)
+    ours = cb.content
+    reads = []
+    keeper.arm(on_read=lambda: reads.append(1))
+    keeper.release()
+    served_by_gtk(ours)
+    assert reads == []
 
 
 def test_claim_without_decoy_serves_the_emoji_immediately():

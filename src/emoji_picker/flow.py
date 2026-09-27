@@ -6,6 +6,7 @@ decoy)/arm/release rather than claim-and-swap-back.
 
 import logging
 from collections.abc import Callable
+from functools import partial
 
 from .config import Config
 from .emoji_data import Emoji
@@ -30,7 +31,7 @@ class PasteFlow:
         self._config = config
         self._schedule = schedule
         self._busy = False
-        self._paste_id = 0
+        self._release_token = 0
         self._pending_release: int | None = None
 
     @property
@@ -63,30 +64,40 @@ class PasteFlow:
             raise
 
     def _paste(self) -> None:
-        # Once the target app has read the emoji, release after release_after_read_ms
-        # (a grace period in case it reads more than once). restore_delay_ms is the
-        # fallback for when nothing reads it, e.g. the paste landed nowhere.
-        on_read = None
-        if self._config.restore_clipboard:
-            self._paste_id += 1
-            paste_id = self._pending_release = self._paste_id
-            on_read = lambda: self._schedule(self._config.release_after_read_ms, lambda: self._restore(paste_id, "after read"))
-        self._clipboard.arm(on_read=on_read)
+        # The release happens release_after_read_ms after the target app's *last* read
+        # of the emoji (each read restarts it, in case an app reads more than once), or
+        # after restore_delay_ms if nothing reads it, e.g. the paste landed nowhere.
+        restore = self._config.restore_clipboard
+        if restore:
+            token = self._new_release_token()
+        self._clipboard.arm(on_read=self._on_read if restore else None)
         try:
             self._injector.paste()
-        except OSError as e:
-            log.error("Paste failed (emoji left on clipboard): %s", e)
+        except Exception:
+            log.exception("Paste failed (emoji left on clipboard)")
             self._pending_release = None
             self._busy = False
             return
-        if self._config.restore_clipboard:
-            self._schedule(self._config.restore_delay_ms, lambda: self._restore(paste_id, "no read, fallback"))
+        if restore:
+            self._schedule(self._config.restore_delay_ms, partial(self._restore, token, "no read, fallback"))
         else:
             self._busy = False
 
-    def _restore(self, paste_id: int, reason: str) -> None:
-        """Release once per paste: whichever of the read or the fallback timer comes first."""
-        if self._pending_release != paste_id:
+    def _on_read(self) -> None:
+        """The target app read the emoji: (re)start the grace period, superseding earlier timers."""
+        if self._pending_release is None:
+            return
+        token = self._new_release_token()
+        self._schedule(self._config.release_after_read_ms, partial(self._restore, token, "after read"))
+
+    def _new_release_token(self) -> int:
+        self._release_token += 1
+        self._pending_release = self._release_token
+        return self._release_token
+
+    def _restore(self, token: int, reason: str) -> None:
+        """Release once, from whichever timer is still current."""
+        if self._pending_release != token:
             return
         self._pending_release = None
         try:

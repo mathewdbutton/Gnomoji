@@ -13,6 +13,7 @@ class World:
             config = Config()
         self.log, self.timers, self.visible = [], [], False
         self.paste_error = None
+        self.on_read = None
         self.flow = PasteFlow(self, self, self, self, config, self.schedule)
 
     # window
@@ -148,6 +149,18 @@ def test_paste_failure_clears_busy():
     w.run_timer()
     assert not w.flow.busy
     assert w.timers == []
+    w.on_read()  # the user pastes the leftover emoji by hand later
+    assert w.timers == []
+    assert "release" not in w.log
+
+
+def test_unexpected_paste_error_also_clears_busy():
+    w = World()
+    w.paste_error = ValueError("closed device")
+    w.flow.pick(POPPER)
+    w.run_timer()
+    assert not w.flow.busy
+    assert w.timers == []
 
 
 def test_release_follows_the_apps_read_instead_of_waiting_the_full_delay():
@@ -161,6 +174,33 @@ def test_release_follows_the_apps_read_instead_of_waiting_the_full_delay():
     assert w.log[-1] == "release"
     assert not w.flow.busy
     w.run_timer()  # the 300 ms fallback now does nothing
+    assert w.log.count("release") == 1
+
+
+def test_each_read_restarts_the_grace_period():
+    w = World()
+    w.flow.pick(POPPER)
+    w.run_timer()
+    fallback = w.timers.pop(0)[1]
+    w.on_read()
+    first = w.timers.pop(0)[1]
+    w.on_read()  # a second read, e.g. the editor after the paste event
+    second = w.timers.pop(0)[1]
+    first()
+    fallback()  # a read supersedes the fallback too
+    assert "release" not in w.log
+    second()
+    assert w.log.count("release") == 1
+    assert not w.flow.busy
+
+
+def test_late_read_after_fallback_release_does_nothing():
+    w = World()
+    w.flow.pick(POPPER)
+    w.run_timer()
+    w.run_timer()  # fallback releases: nothing read it
+    w.on_read()  # a late read (served by our old provider)
+    assert w.timers == []
     assert w.log.count("release") == 1
 
 
