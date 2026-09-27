@@ -1,0 +1,13 @@
+Package: emoji-picker
+Version: @VERSION@
+Architecture: all
+Maintainer: Mathew Button <mat@pushbutton.xyz>
+Installed-Size: @INSTALLED_SIZE@
+Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, fonts-noto-color-emoji
+Section: utils
+Priority: optional
+Homepage: https://github.com/mathewdbutton/emoji-picker
+Description: Double-tap right Shift emoji picker for GNOME on Wayland
+ Double-tap right Shift in any text field to open an emoji picker. Search or
+ browse, press Enter, and the emoji is pasted in. The text on your clipboard
+ is put back afterwards.
