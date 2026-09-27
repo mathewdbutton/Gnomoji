@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Emoji Picker
+Comment=Double-tap right Shift to pick an emoji
+Icon=local.emojipicker.EmojiPicker
+Exec=env PYTHONPATH=@SRC@ /usr/bin/python3 -m emoji_picker
+Terminal=false
+NoDisplay=true

@@ -5,6 +5,8 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+APP_ID=local.emojipicker.EmojiPicker
 PYTHON=/usr/bin/python3
 RULE=70-emoji-picker.rules
 APT_PACKAGES=(python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-evdev fonts-noto-color-emoji)
@@ -97,6 +99,13 @@ if [ ${#steps[@]} -gt 0 ]; then
 fi
 
 echo "All good. Installing the service..."
+# The icon and (hidden) desktop entry give the picker its name and icon in Alt+Tab
+# and on its notifications.
+mkdir -p "$DATA_DIR/icons/hicolor/scalable/apps" "$DATA_DIR/applications"
+cp "$REPO/desktop/$APP_ID.svg" "$DATA_DIR/icons/hicolor/scalable/apps/"
+# GNOME Shell only rescans icons when the theme's top folder changes, not a subfolder.
+touch "$DATA_DIR/icons/hicolor"
+sed "s|@SRC@|$REPO/src|" "$REPO/desktop/$APP_ID.desktop" > "$DATA_DIR/applications/$APP_ID.desktop"
 mkdir -p "$UNIT_DIR"
 sed "s|@SRC@|$REPO/src|" "$REPO/systemd/emoji-picker.service" > "$UNIT_DIR/emoji-picker.service"
 systemctl --user daemon-reload

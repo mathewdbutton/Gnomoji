@@ -22,7 +22,10 @@ keys it was holding down.
 | What | Added by | Remove with |
 |---|---|---|
 | `~/.config/systemd/user/emoji-picker.service` and its enable link in `~/.config/systemd/user/graphical-session.target.wants/` | `./install.sh` | `./uninstall.sh` |
+| `~/.local/share/applications/local.emojipicker.EmojiPicker.desktop` (hidden; gives the window its name) | `./install.sh` | `./uninstall.sh` |
+| `~/.local/share/icons/hicolor/scalable/apps/local.emojipicker.EmojiPicker.svg` (the app icon) | `./install.sh` | `./uninstall.sh` |
 | `~/.local/state/emoji-picker/recent.json` (recently used emoji) | The picker, on first pick | `./uninstall.sh --purge` |
+| `~/.local/state/emoji-picker/welcomed` (the "ready" notification was shown) | The picker, on its first start | `./uninstall.sh --purge` |
 | `~/.config/emoji-picker/config.toml` | You, if you create one | `./uninstall.sh --purge` |
 | Logs | The user journal (rotated automatically) | Nothing needed |
 | `/etc/udev/rules.d/70-emoji-picker.rules` (keyboard access for the person at the screen) | `./install.sh`, with your OK | `./uninstall.sh --purge` (asks first) |
@@ -48,6 +51,7 @@ rm -rf /path/to/emoji-picker
 ```bash
 systemctl --user status emoji-picker     # "Unit emoji-picker.service could not be found."
 ls ~/.local/state/emoji-picker ~/.config/emoji-picker 2>&1   # "No such file or directory"
+ls ~/.local/share/applications/local.emojipicker.* ~/.local/share/icons/hicolor/scalable/apps/local.emojipicker.* 2>&1   # "No such file or directory"
 ls /etc/udev/rules.d/70-emoji-picker*.rules 2>&1             # "No such file or directory"
 id -nG | grep -w input                   # no output (if you left the group)
 ```

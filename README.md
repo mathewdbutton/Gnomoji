@@ -26,7 +26,8 @@ It checks what's missing, lists what it needs sudo for, and asks once before doi
   or sound card: other users and remote logins don't get it, and no log-out is needed.
 
 Then it installs a systemd user service that starts with your desktop session and runs from the
-cloned folder. If you move the folder, run `./install.sh` again. Say no at the prompt and it
+cloned folder, plus an icon and a hidden desktop entry (no sudo). The first time the picker starts,
+a notification says it's ready. If you move the folder, run `./install.sh` again. Say no at the prompt and it
 prints the commands so you can run them yourself.
 
 To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_picker` from the repo

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Remove the emoji picker service. Pass --purge to also delete recents, config and the udev rule.
+# Remove the emoji picker service, desktop entry and icon.
+# Pass --purge to also delete recents, config and the udev rule.
 set -euo pipefail
 
 UNIT="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/emoji-picker.service"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+APP_ID=local.emojipicker.EmojiPicker
 # The current rule, and the one older installs added by hand.
 RULES=(/etc/udev/rules.d/70-emoji-picker.rules /etc/udev/rules.d/70-emoji-picker-uinput.rules)
 
@@ -17,7 +20,9 @@ systemctl --user disable --now emoji-picker 2>/dev/null || true
 rm -f "$UNIT"
 systemctl --user daemon-reload
 systemctl --user reset-failed emoji-picker 2>/dev/null || true
-echo "Service removed."
+rm -f "$DATA_DIR/applications/$APP_ID.desktop" "$DATA_DIR/icons/hicolor/scalable/apps/$APP_ID.svg"
+touch "$DATA_DIR/icons/hicolor" 2>/dev/null || true  # so GNOME Shell notices the icon has gone
+echo "Service, desktop entry and icon removed."
 
 if [ "${1:-}" != "--purge" ]; then
     echo "Kept your recents, config and keyboard access (run with --purge to remove them)."

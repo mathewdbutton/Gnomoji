@@ -16,7 +16,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib
+from gi.repository import Adw, Gio, GLib
 
 from . import config as config_module
 from .clipboard import ClipboardKeeper
@@ -24,6 +24,7 @@ from .emoji_data import EmojiData, Recents
 from .flow import PasteFlow
 from .injector import Injector
 from .trigger import DoubleTapDetector, KeyboardWatcher, check_access
+from .welcome import Welcome
 from .window import PickerWindow
 
 APP_ID = "local.emojipicker.EmojiPicker"
@@ -38,6 +39,41 @@ def _schedule(ms: int, fn) -> None:
         return GLib.SOURCE_REMOVE
 
     GLib.timeout_add(ms, once)
+
+
+def _notifications(connection: Gio.DBusConnection):
+    """Send (and later withdraw) the welcome straight to GNOME's notification service,
+    not through Gio.Application.send_notification, which drops errors: we need to see
+    InvalidApp to retry while GNOME hasn't noticed our new desktop file yet."""
+
+    def send(on_result) -> None:
+        params = GLib.Variant("(ssa{sv})", (APP_ID, "welcome", {
+            "title": GLib.Variant("s", "Emoji Picker is ready"),
+            "body": GLib.Variant("s", "Double-tap right Shift to open it."),
+            "icon": Gio.ThemedIcon.new(APP_ID).serialize(),
+        }))
+
+        def done(conn: Gio.DBusConnection, result: Gio.AsyncResult) -> None:
+            try:
+                conn.call_finish(result)
+            except GLib.Error as e:
+                on_result(Gio.DBusError.get_remote_error(e) or e.message)
+                return
+            on_result(None)
+
+        _call(connection, "AddNotification", params, done)
+
+    def withdraw() -> None:
+        _call(connection, "RemoveNotification", GLib.Variant("(ss)", (APP_ID, "welcome")), None)
+
+    return send, withdraw
+
+
+def _call(connection: Gio.DBusConnection, method: str, params: GLib.Variant, done) -> None:
+    connection.call(
+        "org.gtk.Notifications", "/org/gtk/Notifications", "org.gtk.Notifications",
+        method, params, None, Gio.DBusCallFlags.NONE, -1, None, done,
+    )
 
 
 def _exit_on_watcher_crash() -> None:
@@ -88,6 +124,9 @@ class EmojiPickerApp(Adw.Application):
             on_crash=_exit_on_watcher_crash,
         ).start()
         log.info("Ready: double-tap right Shift to open the picker")
+        if (connection := self.get_dbus_connection()) is not None:
+            send, withdraw = _notifications(connection)
+            Welcome(send, withdraw, _schedule).start()
 
     def _toggle_from_key(self) -> bool:
         self._flow.toggle()
