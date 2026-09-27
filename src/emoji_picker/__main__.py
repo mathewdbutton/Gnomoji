@@ -122,16 +122,38 @@ class EmojiPickerApp(Adw.Application):
             window, ClipboardKeeper(window.get_clipboard()), self._injector, recents,
             self._config, _schedule,
         )
+        self._detector = DoubleTapDetector(self._config.double_tap_ms)
         KeyboardWatcher(
-            DoubleTapDetector(self._config.double_tap_ms),
+            self._detector,
             on_double_tap=lambda: GLib.idle_add(self._toggle_from_key),
             ignore_names={Injector.NAME},
             on_crash=_exit_on_watcher_crash,
         ).start()
+        self._watch_config()
         log.info("Ready: double-tap right Shift to open the picker")
         if (connection := self.get_dbus_connection()) is not None:
             send, withdraw = _notifications(connection)
             Welcome(send, withdraw, _schedule).start()
+
+    def _watch_config(self) -> None:
+        """Apply config.toml edits live. GLib's monitor also reports a file (or folder)
+        created later, and editors' save-by-rename; the Reloader debounces the bursts."""
+        path = config_module.DEFAULT_PATH
+        self._reloader = config_module.Reloader(path, self._config, self._apply_config, _schedule)
+        try:
+            # Kept on self: a garbage-collected monitor silently stops reporting.
+            self._config_monitor = Gio.File.new_for_path(str(path)).monitor_file(
+                Gio.FileMonitorFlags.NONE, None
+            )
+        except GLib.Error as e:
+            log.warning("Config changes need a restart: can't watch %s: %s", path, e)
+            return
+        self._config_monitor.connect("changed", lambda *_: self._reloader.file_changed())
+
+    def _apply_config(self, config: config_module.Config) -> None:
+        self._config = config
+        self._flow.set_config(config)
+        self._detector.set_interval(config.double_tap_ms)
 
     def _toggle_from_key(self) -> bool:
         self._flow.toggle()

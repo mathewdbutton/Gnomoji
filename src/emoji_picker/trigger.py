@@ -23,6 +23,11 @@ class DoubleTapDetector:
         self.key = key
         self._reset()
 
+    def set_interval(self, interval_ms: int) -> None:
+        """Safe from another thread while the watcher is in feed(): rebinding one float is
+        atomic, and a change mid-feed can at worst misjudge a single tap."""
+        self.interval = interval_ms / 1000
+
     def _reset(self) -> None:
         self._down_at: float | None = None
         self._last_tap_up: float | None = None

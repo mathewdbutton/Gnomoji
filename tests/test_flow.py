@@ -231,3 +231,21 @@ def test_release_after_read_uses_configured_delay():
     w.run_timer()
     w.on_read()
     assert [ms for ms, _ in w.timers] == [300, 120]
+
+
+def test_set_config_applies_to_next_pick():
+    w = World()
+    w.flow.set_config(Config(paste_delay_ms=150))
+    w.flow.pick(POPPER)
+    assert [ms for ms, _ in w.timers] == [150]
+
+
+def test_config_change_mid_paste_uses_pick_time_config():
+    w = World()
+    w.flow.pick(POPPER)
+    w.flow.set_config(Config(restore_clipboard=False, restore_delay_ms=999))
+    w.run_timer()
+    assert w.on_read is not None  # armed with a read callback, as restore was on at pick time
+    w.run_timer()
+    assert w.log[-2:] == ["after 300", "release"]
+    assert not w.flow.busy

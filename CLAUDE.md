@@ -81,6 +81,9 @@ never in this file.
   before the first `from gi.repository import ...` anywhere (that import initialises fontconfig;
   `import gi` / `gi.require_version()` alone don't). The same font makes *other* apps slow to
   draw each new emoji the first time, which looks like a paste delay; the picker's side is ~0.1 s.
+- **Config reloads live** (`config.Reloader` fed by a `Gio.FileMonitor` in `__main__`, kept on
+  `self`: a garbage-collected monitor silently stops). `PasteFlow` snapshots the config at pick
+  time (`_active`), so a reload mid-paste can't split a decoy claim from its release.
 - **The window opens where GNOME places it** (top-left by default).
 - **The picker can't reopen where it was dragged.** Hiding unmaps it, so GNOME re-places it.
   Minimise-instead-of-hide keeps the position, but `present()` from our keyboard trigger (not
@@ -89,7 +92,7 @@ never in this file.
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 135 tests, lint (ruff flags unused noqa, RUF100)
+uv run pytest -q && uv run ruff check            # 149 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run
 .venv/bin/python -m emoji_picker.window          # window preview; doesn't paste (steals focus!)
 journalctl --user -u emoji-picker -f             # service logs, once installed

@@ -60,7 +60,8 @@ release_after_read_ms = 50  # restore this long after the app reads the emoji
 paste_delay_ms = 80       # wait for focus to return before pasting
 ```
 
-Restart after changes: `systemctl --user restart emoji-picker`.
+Changes apply a moment after you save; no restart needed. If a value is invalid, the picker
+keeps the previous setting and logs a warning (`journalctl --user -u emoji-picker -f`).
 
 ## Uninstall
 

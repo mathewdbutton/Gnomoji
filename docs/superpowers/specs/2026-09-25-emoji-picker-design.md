@@ -87,7 +87,7 @@ login. It stays resident so the popup appears instantly.
 | `injector.py` | Owns a uinput virtual keyboard and exposes `paste()`, which sends the paste chord. | `linux_input.py` (stdlib) |
 | `emoji_data.py` | Loads `emoji.json`. Search ranking: exact name, then name prefix, then keyword match. Keeps recents in `~/.local/state/emoji-picker/recent.json`. Pure Python with no GTK, so it's unit-testable. | none |
 | `selection.py` | GTK-free selection state for the grid: current index, arrow movement given the column count, whether Enter has a target. | none |
-| `config.py` | Loads the optional `config.toml` (stdlib `tomllib`) and applies defaults. | none |
+| `config.py` | Loads the optional `config.toml` (stdlib `tomllib`) and applies defaults; `Reloader` re-reads it when it changes. | none |
 | `clipboard.py` | `ClipboardKeeper`: snapshot text/image on focus; claim with a decoy (or the emoji, if none); arm to the emoji before pasting; release afterwards only if the clipboard is still ours. | Gdk |
 | `flow.py` | `PasteFlow`: toggle, and pick → clipboard → hide → paste → restore sequencing with a busy guard. GTK-free and unit-tested with fakes. | none |
 | `window.py` | The libadwaita popup: search entry, category tabs, scrolling grid (recents first), keyboard navigation (using `selection.py`). Its clipboard is handed to `clipboard.py` (only the focused app can read the clipboard on Wayland). | GTK4 / Adw |
@@ -214,6 +214,13 @@ and defaults:
 
 A missing file means all defaults are used. An invalid value is logged and its default
 is used instead.
+
+**Live reload (2026-09-27):** a `Gio.FileMonitor` on the file (which also reports the file or
+its folder being created later, and editors' save-by-rename) feeds `config.Reloader`, which
+debounces for 200 ms and re-reads. When reloading, an invalid value or an unreadable file keeps
+the *previous* setting rather than the default; a removed key or a deleted file still means the
+default. New values reach `PasteFlow.set_config` (from the next pick: a paste in progress keeps
+the settings it started with) and `DoubleTapDetector.set_interval`.
 
 ## Testing
 

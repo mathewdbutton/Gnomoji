@@ -225,3 +225,12 @@ def test_run_calls_on_crash_and_returns_when_loop_raises(caplog):
     w.run()  # must return, not hang or raise
     assert calls == [1]
     assert "boom" in caplog.text or "crash" in caplog.text.lower()
+
+
+def test_set_interval_changes_double_tap_window():
+    d = DoubleTapDetector(300)
+    events = tap(RS, 0.0) + tap(RS, 0.4)
+    assert not any(d.feed(code, value, t) for t, code, value in events)
+    d.set_interval(500)
+    events = tap(RS, 1.0) + tap(RS, 1.4)
+    assert [d.feed(code, value, t) for t, code, value in events][-1] is True
