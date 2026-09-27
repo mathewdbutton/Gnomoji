@@ -1,5 +1,6 @@
 """The picker popup: search entry, category tabs, emoji grid and footer."""
 
+import logging
 from collections.abc import Callable
 
 from .fonts import use_fast_emoji_font
@@ -18,6 +19,8 @@ from gi.repository import Adw, Gdk, Gtk, Pango
 
 from .emoji_data import Emoji, EmojiData, Recents
 from .selection import Selection
+
+log = logging.getLogger(__name__)
 
 COLUMNS = 8
 MAX_RESULTS = 200
@@ -39,6 +42,8 @@ CSS = """
 .emoji-tab { font-family: "Noto Color Emoji"; font-size: 16px; padding: 2px 4px; min-width: 0; }
 .section-title { font-weight: bold; margin: 8px 8px 2px 8px; }
 .footer { padding: 6px 10px; }
+.drag-strip { padding: 6px 0 4px 0; }
+.drag-handle { background: alpha(currentColor, 0.25); border-radius: 2px; min-width: 36px; min-height: 4px; }
 """
 
 
@@ -58,6 +63,7 @@ class PickerWindow(Adw.ApplicationWindow):
         self._data, self._recents = data, recents
         self._on_pick, self._on_focused = on_pick, on_focused
         self._was_active = False
+        self._pressed = False  # a mouse button is down inside the picker (maybe a drag)
         self._selection = Selection([], COLUMNS)
         self._emojis_of: dict[Gtk.FlowBox, list[Emoji]] = {}
         self._title_of: dict[Gtk.FlowBox, str] = {}
@@ -74,6 +80,13 @@ class PickerWindow(Adw.ApplicationWindow):
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self._on_key)
         self.add_controller(keys)
+        # GNOME takes focus away while it moves the window, so a focus loss during a
+        # press is a drag, not a click-away. Button 0 = any button. No "cancel" handler:
+        # the WindowHandle cancels this gesture as the drag starts, just before focus goes.
+        clicks = Gtk.GestureClick(button=0, propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        clicks.connect("pressed", lambda *_: self._set_pressed(True))
+        clicks.connect("released", lambda *_: self._set_pressed(False))
+        self.add_controller(clicks)
 
     # --- construction ------------------------------------------------------
 
@@ -124,15 +137,22 @@ class PickerWindow(Adw.ApplicationWindow):
         self._footer.add_css_class("footer")
 
         top = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=8, margin_start=8,
+            orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_start=8,
             margin_end=8, margin_bottom=4,
         )
+        # Only a visual hint: the WindowHandle below makes every empty spot draggable.
+        strip = Gtk.Box()
+        strip.add_css_class("drag-strip")
+        strip.set_cursor_from_name("grab")
+        pill = Gtk.Box(halign=Gtk.Align.CENTER, hexpand=True)
+        pill.add_css_class("drag-handle")
+        strip.append(pill)
         top.append(self._entry)
         top.append(self._tabs)
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        for widget in (top, Gtk.Separator(), self._scroll, Gtk.Separator(), self._footer):
+        for widget in (strip, top, Gtk.Separator(), self._scroll, Gtk.Separator(), self._footer):
             content.append(widget)
-        self.set_content(content)
+        self.set_content(Gtk.WindowHandle(child=content))
 
     def _make_box(self, emojis: list[Emoji]) -> Gtk.FlowBox:
         box = Gtk.FlowBox(
@@ -297,12 +317,24 @@ class PickerWindow(Adw.ApplicationWindow):
         child = box.get_child_at_pos(x, y)
         self._show_footer(self._emojis_of[box][child.get_index()] if child else None)
 
+    def _set_pressed(self, pressed: bool) -> None:
+        log.debug("Picker pressed=%s", pressed)
+        self._pressed = pressed
+
     def _on_active_changed(self, *_args) -> None:
+        log.debug(
+            "Picker is-active=%s (was_active=%s, visible=%s, pressed=%s)",
+            self.is_active(), self._was_active, self.get_visible(), self._pressed,
+        )
         if self.is_active():
+            self._pressed = False
             if not self._was_active:
                 self._was_active = True
                 self._on_focused()
+        elif self._pressed:
+            log.info("Picker lost focus mid-press: a drag, staying open")
         elif self._was_active and self.get_visible():
+            log.info("Picker lost focus: closing (click-away)")
             self.dismiss()  # clicked away: close without inserting
 
 
