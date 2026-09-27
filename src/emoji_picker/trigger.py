@@ -7,8 +7,8 @@ import threading
 import time
 from collections.abc import Callable
 
-import evdev
-from evdev import ecodes
+from . import linux_input
+from .linux_input import EV_KEY, KEY_RIGHTSHIFT
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ KEY_UP, KEY_DOWN, KEY_REPEAT = 0, 1, 2
 class DoubleTapDetector:
     """Pure state machine: feed key events, get True when a double-tap completes."""
 
-    def __init__(self, interval_ms: int, key: int = ecodes.KEY_RIGHTSHIFT):
+    def __init__(self, interval_ms: int, key: int = KEY_RIGHTSHIFT):
         self.interval = interval_ms / 1000
         self.key = key
         self._reset()
@@ -56,7 +56,7 @@ class DoubleTapDetector:
         return False
 
 
-def check_access(list_devices=evdev.list_devices, event_nodes: list[str] | None = None) -> None:
+def check_access(list_devices=linux_input.list_devices, event_nodes: list[str] | None = None) -> None:
     """Fail fast with a fix-it message if we can't read any input device."""
     nodes = glob.glob("/dev/input/event*") if event_nodes is None else event_nodes
     if nodes and not list_devices():
@@ -67,7 +67,7 @@ def check_access(list_devices=evdev.list_devices, event_nodes: list[str] | None 
 
 
 def _is_keyboard(device) -> bool:
-    return ecodes.KEY_RIGHTSHIFT in device.capabilities().get(ecodes.EV_KEY, [])
+    return device.has_key(KEY_RIGHTSHIFT)
 
 
 class KeyboardWatcher(threading.Thread):
@@ -80,8 +80,8 @@ class KeyboardWatcher(threading.Thread):
         detector: DoubleTapDetector,
         on_double_tap: Callable[[], object],
         ignore_names=frozenset(),
-        list_devices=evdev.list_devices,
-        open_device=evdev.InputDevice,
+        list_devices=linux_input.list_devices,
+        open_device=linux_input.InputDevice,
         on_crash: Callable[[], object] | None = None,
     ):
         super().__init__(daemon=True, name="keyboard-watcher")
@@ -144,7 +144,7 @@ class KeyboardWatcher(threading.Thread):
     def _drain(self, device) -> None:
         try:
             for event in device.read():
-                if event.type == ecodes.EV_KEY and self.detector.feed(
+                if event.type == EV_KEY and self.detector.feed(
                     event.code, event.value, event.timestamp()
                 ):
                     self.on_double_tap()

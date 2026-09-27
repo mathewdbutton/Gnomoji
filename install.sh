@@ -9,8 +9,8 @@ DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 APP_ID=local.emojipicker.EmojiPicker
 PYTHON=/usr/bin/python3
 RULE=70-emoji-picker.rules
-APT_PACKAGES=(python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-evdev fonts-noto-color-emoji)
-DNF_PACKAGES=(python3-gobject gtk4 libadwaita python3-evdev google-noto-color-emoji-fonts)
+APT_PACKAGES=(python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 fonts-noto-color-emoji)
+DNF_PACKAGES=(python3-gobject gtk4 libadwaita google-noto-color-emoji-fonts)
 
 has_packages() {
     "$PYTHON" - <<'PY' 2>/dev/null
@@ -20,7 +20,6 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: F401
-import evdev  # noqa: F401
 PY
 }
 
@@ -55,7 +54,7 @@ if ! has_packages; then
         steps+=("Install packages: ${DNF_PACKAGES[*]}")
         commands+=("sudo dnf install -y ${DNF_PACKAGES[*]}")
     else
-        printf '\n✗ Missing Python 3.11+, GTK 4, libadwaita or python-evdev for %s,\n' "$PYTHON"
+        printf '\n✗ Missing Python 3.11+, GTK 4 or libadwaita for %s,\n' "$PYTHON"
         printf '  and there is no apt or dnf here. Install them yourself, then run ./install.sh again.\n'
         exit 1
     fi

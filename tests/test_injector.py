@@ -1,11 +1,11 @@
 import pytest
-from evdev import ecodes
 
 import emoji_picker.injector as injector_module
+from emoji_picker import linux_input as li
 from emoji_picker.injector import Injector
 
-EV = ecodes.EV_KEY
-SHIFT, INSERT = ecodes.KEY_LEFTSHIFT, ecodes.KEY_INSERT
+EV = li.EV_KEY
+SHIFT, INSERT = li.KEY_LEFTSHIFT, li.KEY_INSERT
 
 
 class FakeUInput:
@@ -34,6 +34,6 @@ def test_uinput_permission_problem_gives_helpful_error(monkeypatch):
     def denied(*args, **kwargs):
         raise PermissionError(13, "Permission denied: '/dev/uinput'")
 
-    monkeypatch.setattr(injector_module, "UInput", denied)
+    monkeypatch.setattr(injector_module, "VirtualKeyboard", denied)
     with pytest.raises(PermissionError, match=r"/dev/uinput.*\./install\.sh"):
         Injector()

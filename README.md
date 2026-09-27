@@ -19,7 +19,8 @@ Clone the repo wherever you like, then:
 
 It checks what's missing, lists what it needs sudo for, and asks once before doing it:
 
-- **Packages:** Python GTK 4, libadwaita, python-evdev and a colour emoji font.
+- **Packages:** Python GTK 4, libadwaita and a colour emoji font. A standard Ubuntu GNOME
+  desktop already has all of them, so usually nothing is installed.
 - **Keyboard access:** a udev rule (`udev/70-emoji-picker.rules`) lets the person logged in at
   the screen read keyboards (to spot the right-Shift double-tap) and create a virtual keyboard
   (to send the paste keystroke). Access is tied to your active desktop session, like a webcam

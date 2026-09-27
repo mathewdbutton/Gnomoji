@@ -30,7 +30,7 @@ keys it was holding down.
 | Logs | The user journal (rotated automatically) | Nothing needed |
 | `/etc/udev/rules.d/70-emoji-picker.rules` (keyboard access for the person at the screen) | `./install.sh`, with your OK | `./uninstall.sh --purge` (asks first) |
 | `/etc/udev/rules.d/70-emoji-picker-uinput.rules` and membership of the `input` group | Older versions: you, by hand | See below |
-| System packages (GTK, libadwaita, python-evdev, emoji font) | `./install.sh`, with your OK | Usually keep them: other apps depend on them (Ubuntu's own tools need `python3-gi`) |
+| System packages (GTK, libadwaita, emoji font), if they were missing | `./install.sh`, with your OK | Usually keep them: other apps depend on them (Ubuntu's own tools need `python3-gi`) |
 
 ## Full teardown
 

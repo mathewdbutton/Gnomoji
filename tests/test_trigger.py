@@ -2,11 +2,11 @@ import os
 from collections import namedtuple
 
 import pytest
-from evdev import ecodes
 
+from emoji_picker import linux_input as li
 from emoji_picker.trigger import DoubleTapDetector, KeyboardWatcher, check_access
 
-RS, LS, A = ecodes.KEY_RIGHTSHIFT, ecodes.KEY_LEFTSHIFT, ecodes.KEY_A
+RS, LS, A = li.KEY_RIGHTSHIFT, li.KEY_LEFTSHIFT, li.KEY_A
 DOWN, UP, REPEAT = 1, 0, 2
 
 
@@ -78,8 +78,8 @@ class FakeDevice:
     def fileno(self):
         return self._r
 
-    def capabilities(self):
-        return {ecodes.EV_KEY: self._keys}
+    def has_key(self, code):
+        return code in self._keys
 
     def read(self):
         if self.fail:
@@ -119,7 +119,7 @@ def watcher(fake, calls=None, **kw):
 
 def test_rescan_keeps_keyboards_only():
     kbd = FakeDevice("/dev/input/event1")
-    mouse = FakeDevice("/dev/input/event2", name="mouse", keys=[ecodes.BTN_LEFT])
+    mouse = FakeDevice("/dev/input/event2", name="mouse", keys=[li.BTN_LEFT])
     ours = FakeDevice("/dev/input/event3", name="emoji-picker virtual keyboard")
     fake = FakeInput([kbd, mouse, ours])
     w = watcher(fake, ignore_names={"emoji-picker virtual keyboard"})
@@ -129,7 +129,7 @@ def test_rescan_keeps_keyboards_only():
 
 
 def test_rejected_devices_are_not_reopened_every_scan():
-    mouse = FakeDevice("/dev/input/event2", name="mouse", keys=[ecodes.BTN_LEFT])
+    mouse = FakeDevice("/dev/input/event2", name="mouse", keys=[li.BTN_LEFT])
     fake = FakeInput([mouse])
     w = watcher(fake)
     w._rescan()
@@ -162,10 +162,10 @@ def test_device_that_fails_during_inspection_is_skipped():
     bad = FakeDevice("/dev/input/event1")
     good = FakeDevice("/dev/input/event2")
 
-    def bad_capabilities():
+    def bad_has_key(code):
         raise OSError(19, "No such device")
 
-    bad.capabilities = bad_capabilities
+    bad.has_key = bad_has_key
     fake = FakeInput([bad, good])
     w = watcher(fake)
     w._rescan()
@@ -183,11 +183,11 @@ def test_drain_feeds_detector_and_calls_back():
     w = watcher(FakeInput([kbd]), calls)
     w._rescan()
     kbd.events = [
-        Event(ecodes.EV_KEY, RS, 1, 0.0),
-        Event(ecodes.EV_SYN, 0, 0, 0.0),
-        Event(ecodes.EV_KEY, RS, 0, 0.05),
-        Event(ecodes.EV_KEY, RS, 1, 0.15),
-        Event(ecodes.EV_KEY, RS, 0, 0.2),
+        Event(li.EV_KEY, RS, 1, 0.0),
+        Event(li.EV_SYN, 0, 0, 0.0),
+        Event(li.EV_KEY, RS, 0, 0.05),
+        Event(li.EV_KEY, RS, 1, 0.15),
+        Event(li.EV_KEY, RS, 0, 0.2),
     ]
     w._drain(kbd)
     assert calls == [1]
