@@ -3,6 +3,7 @@
 Description=Emoji picker (double-tap right Shift)
 PartOf=graphical-session.target
 After=graphical-session.target
+ConditionUser=!@system
 StartLimitIntervalSec=60
 StartLimitBurst=3
 

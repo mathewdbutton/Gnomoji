@@ -131,6 +131,7 @@ def test_service_runs_the_installed_package(root):
     assert "PYTHONPATH" not in text
     assert "ExecStart=/usr/bin/python3 -m emoji_picker\n" in text
     assert "WantedBy=graphical-session.target" in text
+    assert "ConditionUser=!@system" in text
 
 
 def test_desktop_entry_runs_the_installed_package(root):

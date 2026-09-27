@@ -1,7 +1,12 @@
 #!/bin/sh
-# Runs as root before the package's files are removed. On upgrade it does nothing: postinst
-# restarts the picker with the new version instead.
+# Runs as root before the package's files are removed. On upgrade it only cleans bytecode:
+# postinst restarts the picker with the new version instead, so nothing here stops or disables it.
 set -e
+
+# A root-owned __pycache__ must never block removal, on remove or on upgrade.
+case "$1" in
+    remove|upgrade) py3clean -p emoji-picker || true ;;
+esac
 
 if [ "$1" = remove ]; then
     loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do

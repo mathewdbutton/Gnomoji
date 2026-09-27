@@ -10,15 +10,20 @@ import pytest
 PACKAGING = Path(__file__).resolve().parent.parent / "packaging"
 
 # Logs each call, fails any call containing $FAKE_FAIL, and answers the queries the scripts make:
-# alice (uid 1000) has a running user manager, bob (uid 1001) doesn't.
+# alice (uid 1000) has a running user manager with an active graphical session; bob (uid 1001)
+# has no running user manager; carol (uid 1002) has a running user manager but no active
+# graphical session (e.g. lingering, or logged in over SSH only).
 FAKE = r"""#!/bin/sh
 cmd="$(basename "$0") $*"
 echo "$cmd" >> "$FAKE_LOG"
 if [ -n "$FAKE_FAIL" ] && [ "${cmd#*"$FAKE_FAIL"}" != "$cmd" ]; then exit 1; fi
 case "$cmd" in
-    "loginctl list-users --no-legend") printf ' 1000 alice no active\n 1001 bob   no closing\n' ;;
+    "loginctl list-users --no-legend") printf ' 1000 alice no active\n 1001 bob   no closing\n 1002 carol no active\n' ;;
     "systemctl --quiet is-active user@1000.service") exit 0 ;;
+    "systemctl --quiet is-active user@1002.service") exit 0 ;;
     "systemctl --quiet is-active user@"*) exit 1 ;;
+    "systemctl --user --machine=alice@.host --quiet is-active graphical-session.target") exit 0 ;;
+    "systemctl --user --machine="*"--quiet is-active graphical-session.target") exit 1 ;;
 esac
 exit 0
 """
@@ -34,7 +39,7 @@ ALICE = "systemctl --user --machine=alice@.host"
 def run(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    for name in ("systemctl", "loginctl", "udevadm"):
+    for name in ("systemctl", "loginctl", "udevadm", "py3compile", "py3clean"):
         fake = bin_dir / name
         fake.write_text(FAKE)
         fake.chmod(0o755)
@@ -63,11 +68,26 @@ def run(tmp_path):
 def test_install_grants_access_enables_and_starts_in_running_sessions(run):
     result, calls = run("postinst", "configure", "")
     assert result.returncode == 0, result.stderr
-    assert calls[:3] == [*UDEV, "udevadm settle"]
+    assert calls[:3] == [*UDEV, "udevadm settle --timeout=10"]
     assert "systemctl --global enable emoji-picker.service" in calls
+    assert "py3compile -p emoji-picker" in calls
     reload = calls.index(f"{ALICE} daemon-reload")
     assert calls[reload + 1] == f"{ALICE} restart emoji-picker.service"
     assert not any("bob@" in call for call in calls)
+
+
+def test_install_does_not_restart_a_session_without_a_graphical_target(run):
+    # carol (uid 1002): user manager running, but graphical-session.target not active.
+    result, calls = run("postinst", "configure", "")
+    assert result.returncode == 0, result.stderr
+    assert "systemctl --user --machine=carol@.host --quiet is-active graphical-session.target" in calls
+    assert not any("carol@.host restart" in call or "carol@.host daemon-reload" in call for call in calls)
+
+
+def test_a_py3compile_failure_does_not_fail_the_install(run):
+    result, calls = run("postinst", "configure", "", fail="py3compile")
+    assert result.returncode == 0, result.stderr
+    assert "systemctl --global enable emoji-picker.service" in calls
 
 
 def test_upgrade_restarts_with_the_new_version(run):
@@ -115,6 +135,7 @@ def test_postinst_ignores_other_actions(run, action):
 def test_remove_stops_in_running_sessions_and_disables(run):
     result, calls = run("prerm", "remove")
     assert result.returncode == 0, result.stderr
+    assert "py3clean -p emoji-picker" in calls
     assert f"{ALICE} stop emoji-picker.service" in calls
     assert calls[-1] == "systemctl --global disable emoji-picker.service"
     assert not any("bob@" in call for call in calls)
@@ -137,7 +158,8 @@ def test_remove_succeeds_when_disabling_fails(run):
 def test_upgrade_leaves_the_running_picker_alone(run):
     result, calls = run("prerm", "upgrade", "0.2.0")
     assert result.returncode == 0, result.stderr
-    assert calls == []
+    assert calls == ["py3clean -p emoji-picker"]
+    assert not any("stop" in call or "disable" in call for call in calls)
 
 
 # --- postrm ---------------------------------------------------------------------------------
