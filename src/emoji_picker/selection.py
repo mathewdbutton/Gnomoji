@@ -86,3 +86,18 @@ class Selection:
                 return s
             s += step
         return None
+
+
+def section_in_view(tops: list[float], scroll: float) -> int | None:
+    """The section whose title has most recently scrolled past the top of the view.
+
+    `tops` are the section titles' y positions in content order; `scroll` is the
+    view's scroll offset. The half-pixel slack absorbs rounding after a jump.
+    """
+    if not tops:
+        return None
+    current = 0
+    for i, top in enumerate(tops):
+        if top <= scroll + 0.5:
+            current = i
+    return current

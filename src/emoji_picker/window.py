@@ -18,7 +18,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gtk, Pango
 
 from .emoji_data import Emoji, EmojiData, Recents
-from .selection import Selection
+from .selection import Selection, section_in_view
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ ICONS = {
 CSS = """
 .emoji-cell { font-family: "Noto Color Emoji"; font-size: 22px; padding: 4px; }
 .emoji-tab { font-family: "Noto Color Emoji"; font-size: 16px; padding: 2px 4px; min-width: 0; }
+.emoji-tab.current { background: alpha(currentColor, 0.12); }
 .section-title { font-weight: bold; margin: 8px 8px 2px 8px; }
 .footer { padding: 6px 10px; }
 .drag-strip { padding: 6px 0 4px 0; }
@@ -132,6 +133,9 @@ class PickerWindow(Adw.ApplicationWindow):
         self._scroll = Gtk.ScrolledWindow(
             vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER, child=self._stack
         )
+        adj = self._scroll.get_vadjustment()
+        adj.connect("value-changed", self._update_current_tab)
+        adj.connect("changed", self._update_current_tab)  # content re-laid out
 
         self._footer = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
         self._footer.add_css_class("footer")
@@ -212,6 +216,7 @@ class PickerWindow(Adw.ApplicationWindow):
         self._stack.set_visible_child_name("browse")
         self._selection.reset([len(emojis) for emojis, _ in self._active])
         self._update_highlight()
+        self._update_current_tab()
 
     def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
         query = entry.get_text()
@@ -226,6 +231,7 @@ class PickerWindow(Adw.ApplicationWindow):
         self._scroll.get_vadjustment().set_value(0)
         self._selection.reset([len(results)], select_first=True)
         self._update_highlight()
+        self._update_current_tab()
 
     # --- selection & scrolling ---------------------------------------------------
 
@@ -246,6 +252,23 @@ class PickerWindow(Adw.ApplicationWindow):
             box.select_child(child)
             self._scroll_to(child)
         self._show_footer()
+
+    def _update_current_tab(self, *_args) -> None:
+        """Highlight the tab of the category in view; none while searching."""
+        titles = []
+        if self._stack.get_visible_child_name() == "browse":
+            titles = [self._title_of[box] for _, box in self._active]
+        tops = []
+        for title in titles:
+            ok, bounds = self._titles[title].compute_bounds(self._stack)
+            tops.append(bounds.get_y() if ok else 0.0)
+        i = section_in_view(tops, self._scroll.get_vadjustment().get_value())
+        current = titles[i] if i is not None else None
+        for title, button in self._tab_buttons.items():
+            if title == current:
+                button.add_css_class("current")
+            else:
+                button.remove_css_class("current")
 
     def _show_footer(self, emoji: Emoji | None = None) -> None:
         if emoji is None and (selected := self._selected()) is not None:

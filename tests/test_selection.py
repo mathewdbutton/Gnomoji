@@ -1,4 +1,4 @@
-from emoji_picker.selection import Selection
+from emoji_picker.selection import Selection, section_in_view
 
 
 def sel(sizes, index=None, columns=4):
@@ -152,3 +152,20 @@ def test_next_section_with_one_section_stays():
     s = sel([0, 5, 0], 2)
     s.next_section(1)
     assert s.index == 0
+
+
+def test_section_in_view_is_last_title_scrolled_past():
+    tops = [0.0, 120.0, 400.0]
+    assert section_in_view(tops, 0.0) == 0
+    assert section_in_view(tops, 119.0) == 0
+    assert section_in_view(tops, 120.0) == 1
+    assert section_in_view(tops, 399.0) == 1
+    assert section_in_view(tops, 900.0) == 2
+
+
+def test_section_in_view_tolerates_rounding_after_a_jump():
+    assert section_in_view([0.0, 120.4], 120.0) == 1
+
+
+def test_section_in_view_with_no_sections():
+    assert section_in_view([], 50.0) is None
