@@ -13,11 +13,13 @@ never in this file.
 - `docs/superpowers/specs/2026-09-25-emoji-picker-design.md` is the design and the source of truth.
   Its **"Feasibility results"** section records platform facts proven by hand. Don't
   "simplify" code that depends on them.
-- `UNINSTALL.md` lists everything the project puts outside the repo. **Any change that
-  touches something outside the repo must update it in the same commit.**
+- `UNINSTALL.md` lists everything the project puts outside the repo, both from `install.sh` and
+  from the `.deb`. **Any change that installs something outside the repo, by either route, must
+  update it in the same commit.**
 - `README.md` covers install, use, config and troubleshooting.
 - **User-facing files stay general**: `README.md`, `UNINSTALL.md`, `install.sh`, `uninstall.sh`,
-  `udev/`, `systemd/` and `desktop/`. People install from them on fresh machines.
+  `udev/`, `systemd/`, `desktop/` and `packaging/`. People install from them on fresh machines.
+- `docs/superpowers/specs/2026-09-27-deb-package-design.md` is the design for the `.deb`.
 
 ## Hard-won platform facts (don't regress these)
 
@@ -92,15 +94,34 @@ never in this file.
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 149 tests, lint (ruff flags unused noqa, RUF100)
+uv run pytest -q && uv run ruff check            # 180 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run
 .venv/bin/python -m emoji_picker.window          # window preview; doesn't paste (steals focus!)
 journalctl --user -u emoji-picker -f             # service logs, once installed
+packaging/build-deb.sh                           # .deb from HEAD into dist/ (uncommitted edits aren't in it)
 ```
 
 Runtime uses **only** `/usr/bin/python3` plus distro packages. `.venv` (uv, `--system-site-packages`)
-is for pytest/ruff only. No pip packages at runtime. The installed service runs from the working
-tree, so the checked-out branch is what runs.
+is for pytest/ruff only. No pip packages at runtime. A source install (`./install.sh`) runs from
+the working tree, so the checked-out branch is what runs. A `.deb` install runs the packaged copy.
+
+## Packaging and releasing
+
+`packaging/build-deb.sh` builds `emoji-picker_<version>_all.deb` from `git archive HEAD`. The
+version comes from `pyproject.toml`. The service and desktop entry are `install.sh`'s templates
+with `@SRC@` lines removed, so there's one source for each. The maintainer scripts in
+`packaging/deb/` enable the user service globally and restart it in every running user manager
+(`systemctl --user --machine=<user>@.host`). Every step past unpacking is best-effort and never
+fails the install; `prerm upgrade` is a no-op. `tests/test_maintainer_scripts.py` runs them
+against fake `systemctl`/`loginctl`/`udevadm`.
+
+CI (`.github/workflows/package.yml`) runs the package tests, builds, and install/remove
+smoke-tests (`packaging/smoke-test.sh`) on every PR. To release:
+
+1. Bump `version` in `pyproject.toml`, commit, and merge to `main`.
+2. `git tag v<version> && git push origin v<version>`. CI checks the tag matches and creates a
+   **draft** release with the `.deb`.
+3. Download the `.deb` from the draft, install it, try it, then publish the release.
 
 ## Parked alternative: v2 on branch `build/shell-extension`
 

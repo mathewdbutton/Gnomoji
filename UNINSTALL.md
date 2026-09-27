@@ -17,6 +17,31 @@ pkill -f emoji_picker                 # if running in a terminal
 When the process exits, the kernel removes its virtual keyboard and releases any
 keys it was holding down.
 
+## If you installed the .deb
+
+Remove "Emoji Picker" in App Center, or `sudo apt remove emoji-picker`. That removes everything
+the package installed:
+
+| What | Where |
+|---|---|
+| The code | `/usr/lib/python3/dist-packages/emoji_picker/` |
+| Launcher | `/usr/bin/emoji-picker` |
+| User service, turned on for all users | `/usr/lib/systemd/user/emoji-picker.service` and `/etc/systemd/user/graphical-session.target.wants/emoji-picker.service` |
+| Desktop entry and icon | `/usr/share/applications/local.emojipicker.EmojiPicker.desktop`, `/usr/share/icons/hicolor/scalable/apps/local.emojipicker.EmojiPicker.svg` |
+| Keyboard access rule | `/usr/lib/udev/rules.d/70-emoji-picker.rules` (access already granted ends at your next log-in) |
+| Package docs | `/usr/share/doc/emoji-picker/` |
+
+Packages never touch home folders, so each user's recents and config stay. To delete them:
+
+```bash
+rm -rf ~/.local/state/emoji-picker ~/.config/emoji-picker
+```
+
+Packages installed as dependencies (GTK, libadwaita, the emoji font) stay too. Usually keep them:
+other apps depend on them.
+
+The rest of this file is about installs from source (`./install.sh`).
+
 ## What gets added
 
 | What | Added by | Remove with |

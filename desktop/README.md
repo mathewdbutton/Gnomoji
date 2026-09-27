@@ -1,6 +1,7 @@
 # Desktop entry and icon
 
-`install.sh` copies these into `~/.local/share/` so GNOME shows the picker's name and icon.
+`install.sh` copies these into `~/.local/share/`, and the `.deb` installs them under
+`/usr/share/`, so GNOME shows the picker's name and icon.
 
 The icon is the "pinching hand" emoji (🤏, U+1F90F) from
 [Noto Emoji](https://github.com/googlefonts/noto-emoji), Copyright Google LLC, used under the

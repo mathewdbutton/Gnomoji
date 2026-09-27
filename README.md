@@ -11,25 +11,35 @@ Your clipboard is put back afterwards.
 
 ## Install
 
-Clone the repo wherever you like, then:
+Download `emoji-picker_<version>_all.deb` from the
+[latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest) and double-click
+it. App Center opens; click **Install**. It warns that the package comes from outside the Ubuntu
+store: that's expected for a download like this.
 
-```bash
-./install.sh
-```
+Within a few seconds a notification says the picker is ready. No log-out needed.
 
-It checks what's missing, lists what it needs sudo for, and asks once before doing it:
+What the package sets up:
 
-- **Packages:** Python GTK 4, libadwaita and a colour emoji font. A standard Ubuntu GNOME
-  desktop already has all of them, so usually nothing is installed.
-- **Keyboard access:** a udev rule (`udev/70-emoji-picker.rules`) lets the person logged in at
-  the screen read keyboards (to spot the right-Shift double-tap) and create a virtual keyboard
-  (to send the paste keystroke). Access is tied to your active desktop session, like a webcam
-  or sound card: other users and remote logins don't get it, and no log-out is needed.
+- **Packages:** Python GTK 4, libadwaita and a colour emoji font, if missing. A standard Ubuntu
+  GNOME desktop already has them.
+- **Keyboard access:** a udev rule lets the person logged in at the screen read keyboards (to spot
+  the right-Shift double-tap) and create a virtual keyboard (to send the paste keystroke). Access
+  is tied to your active desktop session, like a webcam or sound card: other users and remote
+  logins don't get it.
+- **The picker** as a user service, turned on for every account on the computer. It starts when
+  you log in.
 
-Then it installs a systemd user service that starts with your desktop session and runs from the
-cloned folder, plus an icon and a hidden desktop entry (no sudo). The first time the picker starts,
-a notification says it's ready. If you move the folder, run `./install.sh` again. Say no at the prompt and it
-prints the commands so you can run them yourself.
+Prefer a terminal? `sudo apt install ./emoji-picker_<version>_all.deb`
+
+**Updating:** download the newer `.deb` and install it the same way. The running picker switches to
+the new version.
+
+### From source
+
+Clone the repo wherever you like, then run `./install.sh`. It checks what's missing, lists what it
+needs sudo for, and asks once before doing it (say no and it prints the commands instead). The
+service then runs from the cloned folder, so keep it where it is (or re-run `./install.sh` after
+moving it). Don't also install the `.deb`: the clone's service takes precedence over it.
 
 To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_picker` from the repo
 (Ctrl+C to stop).
@@ -46,7 +56,7 @@ To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_pick
 | Page Up / Page Down | Scroll a page at a time |
 | Esc | Close |
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
-| `python3 -m emoji_picker` again | Toggles the picker (open if closed, close if open) |
+| `emoji-picker` (or `python3 -m emoji_picker`) again | Toggles the picker (open if closed, close if open) |
 
 ## Configuration
 
@@ -64,6 +74,12 @@ Changes apply a moment after you save; no restart needed. If a value is invalid,
 keeps the previous setting and logs a warning (`journalctl --user -u emoji-picker -f`).
 
 ## Uninstall
+
+**Installed from the `.deb`:** remove "Emoji Picker" in App Center, or
+`sudo apt remove emoji-picker`. Your recents and config stay in your home folder; see
+[UNINSTALL.md](UNINSTALL.md) to delete them.
+
+**Installed from source:**
 
 ```bash
 ./uninstall.sh           # remove the service, keep recents, config and keyboard access
@@ -84,8 +100,8 @@ keeps the previous setting and logs a warning (`journalctl --user -u emoji-picke
 ## Troubleshooting
 
 - Logs: `journalctl --user -u emoji-picker -f`
-- Nothing happens on double-tap: check the logs for a permissions message, and re-run
-  `./install.sh`, which checks permissions. If it says access didn't apply, reboot and run it again.
+- Nothing happens on double-tap: check the logs for a permissions message. Log out and back in,
+  or reboot, so keyboard access applies. From source, re-run `./install.sh`, which checks it.
 - An app pastes your old text instead of the emoji: it read the clipboard late. Raise
   `release_after_read_ms` (e.g. to 200).
 - The emoji didn't paste into some app: nothing read it, so it stays on the
@@ -104,6 +120,7 @@ keeps the previous setting and logs a warning (`journalctl --user -u emoji-picke
 ```bash
 uv venv --system-site-packages --python /usr/bin/python3 && uv sync
 uv run pytest && uv run ruff check
+packaging/build-deb.sh                      # build dist/emoji-picker_<version>_all.deb from HEAD
 .venv/bin/python -m emoji_picker.window   # preview the window without pasting
 /usr/bin/python3 tools/build_emoji_data.py  # regenerate emoji.json (network)
 ```
