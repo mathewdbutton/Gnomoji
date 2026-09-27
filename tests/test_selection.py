@@ -126,9 +126,29 @@ def test_next_section_forward_and_back():
     assert s.index == 3
     s.next_section(1)
     assert s.index == 7
-    s.next_section(1)
-    assert s.index == 7  # no wrap
     s.next_section(-1)
     assert s.index == 3
     s.next_section(-1)
+    assert s.index == 0
+
+
+def test_next_section_wraps_both_ways():
+    s = sel([3, 0, 4, 2], 7)  # last section
+    s.next_section(1)
+    assert s.index == 0  # back to the first
+    s.next_section(-1)
+    assert s.index == 7  # round to the last
+
+
+def test_next_section_wrap_skips_empty_sections():
+    s = sel([0, 3, 4, 0], 3)  # last non-empty section
+    s.next_section(1)
+    assert s.index == 0  # section 1, skipping empty section 0
+    s.next_section(-1)
+    assert s.index == 3  # section 2, skipping empty section 3
+
+
+def test_next_section_with_one_section_stays():
+    s = sel([0, 5, 0], 2)
+    s.next_section(1)
     assert s.index == 0

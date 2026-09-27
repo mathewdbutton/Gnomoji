@@ -64,16 +64,20 @@ class Selection:
                 )
 
     def next_section(self, step: int) -> None:
-        """Select the first item of the next (step=1) or previous (step=-1) section."""
+        """Select the first item of the next (step=1) or previous (step=-1) section.
+
+        Wraps around at either end, skipping empty sections.
+        """
         if self.total == 0:
             return
         if self.index is None:
             current = -1 if step > 0 else len(self.sizes)
         else:
             current = self.locate(self.index)[0]
-        target = self._neighbour(current, step)
-        if target is not None:
-            self.index = self.section_start(target)
+        target = (current + step) % len(self.sizes)
+        while not self.sizes[target]:
+            target = (target + step) % len(self.sizes)
+        self.index = self.section_start(target)
 
     def _neighbour(self, section: int, step: int) -> int | None:
         s = section + step
