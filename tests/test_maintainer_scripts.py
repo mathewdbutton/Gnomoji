@@ -123,7 +123,15 @@ def test_remove_stops_in_running_sessions_and_disables(run):
 def test_remove_succeeds_when_stopping_fails(run):
     result, calls = run("prerm", "remove", fail="stop")
     assert result.returncode == 0, result.stderr
+    assert "alice" in result.stdout
     assert "systemctl --global disable emoji-picker.service" in calls
+
+
+def test_remove_succeeds_when_disabling_fails(run):
+    result, calls = run("prerm", "remove", fail="--global disable")
+    assert result.returncode == 0, result.stderr
+    assert "all users" in result.stdout
+    assert f"{ALICE} stop emoji-picker.service" in calls
 
 
 def test_upgrade_leaves_the_running_picker_alone(run):

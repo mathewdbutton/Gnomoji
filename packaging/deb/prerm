@@ -6,9 +6,11 @@ set -e
 if [ "$1" = remove ]; then
     loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do
         systemctl --quiet is-active "user@$uid.service" 2>/dev/null || continue
-        systemctl --user --machine="$user@.host" stop emoji-picker.service || true
+        systemctl --user --machine="$user@.host" stop emoji-picker.service \
+            || echo "emoji-picker: couldn't stop it for $user; it stops when they log out."
     done
-    systemctl --global disable emoji-picker.service || true
+    systemctl --global disable emoji-picker.service \
+        || echo "emoji-picker: couldn't disable it for all users."
 fi
 
 exit 0
