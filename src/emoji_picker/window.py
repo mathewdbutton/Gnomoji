@@ -53,7 +53,6 @@ class PickerWindow(Adw.ApplicationWindow):
     ):
         super().__init__(application=application, title="Emoji Picker")
         self.set_default_size(380, 420)
-        self.set_decorated(False)
         self.set_resizable(False)
         self.set_hide_on_close(True)
         self._data, self._recents = data, recents
