@@ -16,7 +16,8 @@ class Injector:
             except (OSError, UInputError) as e:
                 raise PermissionError(
                     f"Can't create a virtual keyboard via /dev/uinput ({e}). It must be "
-                    "writable by the 'input' group and your user must be in that group."
+                    "writable by the 'input' group and your user must be in that group. "
+                    "See the README's Permissions section, or run ./install.sh to check."
                 ) from e
         self._device = device
 
