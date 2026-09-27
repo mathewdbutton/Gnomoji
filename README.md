@@ -94,6 +94,9 @@ Restart after changes: `systemctl --user restart emoji-picker`.
   points at a vector `NotoColorEmoji-Regular.ttf` instead of Ubuntu's bitmap `NotoColorEmoji.ttf`,
   that font's first layout can block the GTK main loop for minutes. The picker hides the
   upstream vector font for itself only (`src/emoji_picker/fonts.py`); nothing system-wide changes.
+- A new emoji takes a moment to appear the first time, in any app: that same vector font is slow
+  for every app, not just the picker. If `fc-match` points at it, removing it (e.g. from
+  `/usr/local/share/fonts`, then `fc-cache -f`) makes apps use the fast bitmap font.
 
 ## Development
 
