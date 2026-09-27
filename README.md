@@ -26,7 +26,7 @@ What the package sets up:
 - **Keyboard access:** a udev rule lets the person logged in at the screen read keyboards (to spot
   the right-Shift double-tap) and create a virtual keyboard (to send the paste keystroke). Access
   is tied to your active desktop session, like a webcam or sound card: other users and remote
-  logins don't get it.
+  logins don't get it. See [Privacy and security](#privacy-and-security).
 - **The picker** as a user service, turned on for every account on the computer. It starts when
   you log in.
 
@@ -90,6 +90,22 @@ delete them.
 ```
 
 [UNINSTALL.md](UNINSTALL.md) lists everything the picker adds to your machine.
+
+## Privacy and security
+
+The picker reads every key press so it can spot the right-Shift double-tap. It only checks
+whether each one is right Shift: it never stores, logs or sends your keystrokes, and it has no
+network code.
+
+For that, the udev rule gives the person logged in at the screen direct access to keyboards and
+to the virtual-keyboard device. That access isn't limited to the picker: any program you run gets
+it too, so a malicious program could read your typing or type for you without needing an admin
+password. Keyboard remappers such as keyd or xremap need the same access. The login screen,
+other user accounts and remote logins don't get it. Uninstalling removes the rule; access
+already granted ends when you log out.
+
+The `.deb` is unsigned and its install scripts run as root, so only install one you got from
+this project's GitHub releases or from someone you trust.
 
 ## Known limitations
 
