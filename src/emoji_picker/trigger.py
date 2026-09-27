@@ -61,8 +61,8 @@ def check_access(list_devices=evdev.list_devices, event_nodes: list[str] | None 
     nodes = glob.glob("/dev/input/event*") if event_nodes is None else event_nodes
     if nodes and not list_devices():
         raise PermissionError(
-            "Can't read any device in /dev/input. Add your user to the 'input' group "
-            "(sudo usermod -aG input $USER), then log out and back in."
+            "Can't read any keyboard in /dev/input. Run ./install.sh from the "
+            "emoji-picker folder: it sets up keyboard access."
         )
 
 

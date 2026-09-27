@@ -15,9 +15,8 @@ class Injector:
                 device = UInput({ecodes.EV_KEY: list(CHORD)}, name=self.NAME)
             except (OSError, UInputError) as e:
                 raise PermissionError(
-                    f"Can't create a virtual keyboard via /dev/uinput ({e}). It must be "
-                    "writable by the 'input' group and your user must be in that group. "
-                    "See the README's Permissions section, or run ./install.sh to check."
+                    f"Can't create a virtual keyboard via /dev/uinput ({e}). Run "
+                    "./install.sh from the emoji-picker folder: it sets up access."
                 ) from e
         self._device = device
 

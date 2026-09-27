@@ -25,24 +25,21 @@ keys it was holding down.
 | `~/.local/state/emoji-picker/recent.json` (recently used emoji) | The picker, on first pick | `./uninstall.sh --purge` |
 | `~/.config/emoji-picker/config.toml` | You, if you create one | `./uninstall.sh --purge` |
 | Logs | The user journal (rotated automatically) | Nothing needed |
-| `/etc/udev/rules.d/70-emoji-picker-uinput.rules` | You, from the README's Permissions step | See below |
-| Membership of the `input` group | You, from the README's Permissions step | See below |
-| System packages (GTK, libadwaita, python-evdev, emoji font) | You, from the README's Requirements | Usually keep them: other apps depend on them (Ubuntu's own tools need `python3-gi`) |
+| `/etc/udev/rules.d/70-emoji-picker.rules` (keyboard access for the person at the screen) | `./install.sh`, with your OK | `./uninstall.sh --purge` (asks first) |
+| `/etc/udev/rules.d/70-emoji-picker-uinput.rules` and membership of the `input` group | Older versions: you, by hand | See below |
+| System packages (GTK, libadwaita, python-evdev, emoji font) | `./install.sh`, with your OK | Usually keep them: other apps depend on them (Ubuntu's own tools need `python3-gi`) |
 
 ## Full teardown
 
 ```bash
-# 1. Service, recents and config
+# 1. Service, recents, config and the udev rule (answer yes when asked)
 ./uninstall.sh --purge
 
-# 2. The udev rule (skip if another tool, e.g. a keyboard remapper, needs /dev/uinput)
-sudo rm -f /etc/udev/rules.d/70-emoji-picker-uinput.rules
-sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=misc --action=change
-
-# 3. The input group (skip if a keyboard remapper such as Toshy, keyd or xremap needs it)
+# 2. Older versions only: the input group, if you joined it just for the picker
+#    (skip if a keyboard remapper such as Toshy, keyd or xremap needs it)
 sudo gpasswd -d "$USER" input      # then log out and back in
 
-# 4. The project folder
+# 3. The project folder
 rm -rf /path/to/emoji-picker
 ```
 
@@ -51,7 +48,7 @@ rm -rf /path/to/emoji-picker
 ```bash
 systemctl --user status emoji-picker     # "Unit emoji-picker.service could not be found."
 ls ~/.local/state/emoji-picker ~/.config/emoji-picker 2>&1   # "No such file or directory"
-ls /etc/udev/rules.d/70-emoji-picker-uinput.rules 2>&1       # "No such file or directory"
+ls /etc/udev/rules.d/70-emoji-picker*.rules 2>&1             # "No such file or directory"
 id -nG | grep -w input                   # no output (if you left the group)
 ```
 

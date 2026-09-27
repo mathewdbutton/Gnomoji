@@ -206,7 +206,7 @@ def test_drain_read_error_drops_device():
 
 
 def test_check_access_raises_when_nodes_exist_but_none_readable():
-    with pytest.raises(PermissionError, match="input"):
+    with pytest.raises(PermissionError, match=r"/dev/input.*\./install\.sh"):
         check_access(list_devices=list, event_nodes=["/dev/input/event0"])
 
 

@@ -7,41 +7,7 @@ Your clipboard is put back afterwards.
 ## Requirements
 
 - **GNOME on Wayland.** Tested on Ubuntu 24.04 (GNOME 46). Other desktops and X11 are untested.
-- Python 3.11+ with GTK 4, libadwaita and python-evdev, plus a colour emoji font:
-
-  ```bash
-  # Ubuntu / Debian
-  sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-evdev fonts-noto-color-emoji
-  # Fedora (untested)
-  sudo dnf install python3-gobject gtk4 libadwaita python3-evdev google-noto-color-emoji-fonts
-  ```
-
-### Permissions (one-off, needs sudo)
-
-The picker needs two things a normal app doesn't:
-
-1. **Reading the keyboard**, to spot the right-Shift double-tap anywhere on screen. That means
-   being in the `input` group:
-
-   ```bash
-   sudo usermod -aG input "$USER"
-   ```
-
-   Be aware: this lets **any** program you run read all keyboard input, not just this one.
-   Keyboard remappers (Toshy, keyd, xremap) need the same access. If you're already in the
-   group for one of those, you're set.
-
-2. **A virtual keyboard**, to send the paste keystroke (Shift+Insert). Most distros only let
-   root create one, so install the included udev rule. It lets the `input` group use
-   `/dev/uinput`:
-
-   ```bash
-   sudo cp udev/70-emoji-picker-uinput.rules /etc/udev/rules.d/
-   sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=misc --action=change
-   ```
-
-Then **log out and back in** so the group change applies. `./install.sh` checks both and tells
-you exactly what's missing.
+- Ubuntu/Debian (apt) or Fedora (dnf, untested). `./install.sh` installs what's missing.
 
 ## Install
 
@@ -51,8 +17,17 @@ Clone the repo wherever you like, then:
 ./install.sh
 ```
 
-This installs a systemd user service that starts with your desktop session and runs from the
-cloned folder. If you move the folder, run `./install.sh` again.
+It checks what's missing, lists what it needs sudo for, and asks once before doing it:
+
+- **Packages:** Python GTK 4, libadwaita, python-evdev and a colour emoji font.
+- **Keyboard access:** a udev rule (`udev/70-emoji-picker.rules`) lets the person logged in at
+  the screen read keyboards (to spot the right-Shift double-tap) and create a virtual keyboard
+  (to send the paste keystroke). Access is tied to your active desktop session, like a webcam
+  or sound card: other users and remote logins don't get it, and no log-out is needed.
+
+Then it installs a systemd user service that starts with your desktop session and runs from the
+cloned folder. If you move the folder, run `./install.sh` again. Say no at the prompt and it
+prints the commands so you can run them yourself.
 
 To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_picker` from the repo
 (Ctrl+C to stop).
@@ -88,11 +63,11 @@ Restart after changes: `systemctl --user restart emoji-picker`.
 ## Uninstall
 
 ```bash
-./uninstall.sh           # remove the service, keep recents and config
-./uninstall.sh --purge   # also delete recents and config
+./uninstall.sh           # remove the service, keep recents, config and keyboard access
+./uninstall.sh --purge   # also delete recents and config, and offer to remove the udev rule
 ```
 
-To also undo the permission changes, see [UNINSTALL.md](UNINSTALL.md).
+[UNINSTALL.md](UNINSTALL.md) lists everything the picker adds to your machine.
 
 ## Known limitations
 
@@ -107,7 +82,7 @@ To also undo the permission changes, see [UNINSTALL.md](UNINSTALL.md).
 
 - Logs: `journalctl --user -u emoji-picker -f`
 - Nothing happens on double-tap: check the logs for a permissions message, and re-run
-  `./install.sh`, which checks permissions.
+  `./install.sh`, which checks permissions. If it says access didn't apply, reboot and run it again.
 - An app pastes your old text instead of the emoji: it read the clipboard late. Raise
   `release_after_read_ms` (e.g. to 200).
 - The emoji didn't paste into some app: nothing read it, so it stays on the

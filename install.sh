@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
 # Install the emoji picker as a systemd user service, running from this folder.
-# Checks everything first and prints fix-it commands; never runs sudo itself.
+# Checks what's missing, says what it will do, and asks once before using sudo.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 PYTHON=/usr/bin/python3
-problems=0
+RULE=70-emoji-picker.rules
+APT_PACKAGES=(python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-evdev fonts-noto-color-emoji)
+DNF_PACKAGES=(python3-gobject gtk4 libadwaita python3-evdev google-noto-color-emoji-fonts)
 
-problem() {
-    problems=1
-    printf '\n✗ %s\n' "$1"
-    shift
-    printf '    %s\n' "$@"
-}
-
-echo "Checking requirements..."
-
-if ! "$PYTHON" - <<'PY' 2>/dev/null
+has_packages() {
+    "$PYTHON" - <<'PY' 2>/dev/null
 import sys
 assert sys.version_info >= (3, 11)
 import gi
@@ -26,28 +20,51 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: F401
 import evdev  # noqa: F401
 PY
-then
-    problem "Missing Python 3.11+, GTK 4, libadwaita or python-evdev for $PYTHON." \
-        "Ubuntu/Debian: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-evdev fonts-noto-color-emoji" \
-        "Fedora:        sudo dnf install python3-gobject gtk4 libadwaita python3-evdev google-noto-color-emoji-fonts"
-fi
+}
 
-if ! id -nG | tr ' ' '\n' | grep -qx input; then
-    if getent group input | cut -d: -f4 | tr ',' '\n' | grep -qx "$USER"; then
-        problem "You're in the 'input' group, but this login session doesn't know yet." \
-            "Log out and back in (or reboot), then run ./install.sh again."
+# True if at least one keyboard in /dev/input is readable by us.
+can_read_keyboard() {
+    local node
+    for node in /dev/input/event*; do
+        [ -r "$node" ] || continue
+        udevadm info -q property -n "$node" 2>/dev/null | grep -qx 'ID_INPUT_KEYBOARD=1' && return 0
+    done
+    return 1
+}
+
+has_access() { can_read_keyboard && [ -w /dev/uinput ]; }
+
+ask() {  # ask "Question" -> 0 for yes (the default), 1 for no
+    local reply
+    (: </dev/tty) 2>/dev/null || return 1  # no terminal to ask on
+    read -r -p "$1 [Y/n] " reply </dev/tty || return 1
+    [[ -z "$reply" || "$reply" =~ ^[Yy] ]]
+}
+
+echo "Checking requirements..."
+steps=()
+commands=()
+
+if ! has_packages; then
+    if command -v apt-get >/dev/null; then
+        steps+=("Install packages: ${APT_PACKAGES[*]}")
+        commands+=("sudo apt-get install -y ${APT_PACKAGES[*]}")
+    elif command -v dnf >/dev/null; then
+        steps+=("Install packages: ${DNF_PACKAGES[*]}")
+        commands+=("sudo dnf install -y ${DNF_PACKAGES[*]}")
     else
-        problem "Your user isn't in the 'input' group, so the picker can't see the right Shift key." \
-            "Note: this lets any program you run read keyboard input. See the README." \
-            "sudo usermod -aG input \"\$USER\"    # then log out and back in"
+        printf '\n✗ Missing Python 3.11+, GTK 4, libadwaita or python-evdev for %s,\n' "$PYTHON"
+        printf '  and there is no apt or dnf here. Install them yourself, then run ./install.sh again.\n'
+        exit 1
     fi
 fi
 
-if [ ! -w /dev/uinput ]; then
-    problem "/dev/uinput isn't writable, so the picker can't send the paste keystroke." \
-        "sudo cp \"$REPO/udev/70-emoji-picker-uinput.rules\" /etc/udev/rules.d/" \
-        "sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=misc --action=change" \
-        "(needs the 'input' group above too; if it still fails, reboot)"
+if ! has_access; then
+    steps+=("Let you (the person at the screen) read keyboards and send keystrokes: add /etc/udev/rules.d/$RULE")
+    commands+=("sudo install -m 644 $(printf %q "$REPO/udev/$RULE") /etc/udev/rules.d/"
+               "sudo udevadm control --reload"
+               "sudo udevadm trigger --subsystem-match=input --subsystem-match=misc --action=change"
+               "sudo udevadm settle")
 fi
 
 if [ "${XDG_SESSION_TYPE:-}" != "wayland" ]; then
@@ -55,9 +72,28 @@ if [ "${XDG_SESSION_TYPE:-}" != "wayland" ]; then
         "${XDG_SESSION_TYPE:-unknown}"
 fi
 
-if [ "$problems" -ne 0 ]; then
-    printf '\nFix the above, then run ./install.sh again.\n'
-    exit 1
+if [ ${#steps[@]} -gt 0 ]; then
+    printf '\nTo set up, this needs sudo to:\n'
+    printf '  • %s\n' "${steps[@]}"
+    printf '\n'
+    if ! ask "Continue?"; then
+        printf '\nNothing changed. To do it yourself, run:\n'
+        printf '  %s\n' "${commands[@]}"
+        exit 1
+    fi
+    for cmd in "${commands[@]}"; do
+        printf '→ %s\n' "$cmd"
+        eval "$cmd"
+    done
+
+    if ! has_packages; then
+        printf '\n✗ The packages still aren'\''t usable by %s. See the errors above.\n' "$PYTHON"
+        exit 1
+    fi
+    if ! has_access; then
+        printf '\n✗ Keyboard access didn'\''t apply to this session yet. Reboot, then run ./install.sh again.\n'
+        exit 1
+    fi
 fi
 
 echo "All good. Installing the service..."

@@ -35,5 +35,5 @@ def test_uinput_permission_problem_gives_helpful_error(monkeypatch):
         raise PermissionError(13, "Permission denied: '/dev/uinput'")
 
     monkeypatch.setattr(injector_module, "UInput", denied)
-    with pytest.raises(PermissionError, match="/dev/uinput"):
+    with pytest.raises(PermissionError, match=r"/dev/uinput.*\./install\.sh"):
         Injector()
