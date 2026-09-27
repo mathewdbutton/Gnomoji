@@ -10,9 +10,9 @@ If keys ever behave strangely (e.g. a modifier seems stuck, or keys are being
 doubled), stop the picker:
 
 ```bash
-systemctl --user stop emoji-picker    # if installed as a service (Task 11+)
+systemctl --user stop emoji-picker    # if installed as a service
 pkill -f emoji_picker                 # if running in a terminal
-pkill -f paste_probe.py               # if the Task 1 spike is running
+pkill -f paste_probe.py               # if the paste spike is running
 ```
 
 When the process exits, the kernel removes its virtual keyboard and releases any
@@ -20,12 +20,12 @@ keys it was holding down.
 
 ## Footprint by step
 
-| Task | What it adds outside the repo | Rollback |
+| Build step | What it adds outside the repo | Rollback |
 |---|---|---|
 | 1. Feasibility spike | **Done 2026-09-26. Nothing persisted.** Its temporary virtual keyboard disappeared on exit. `center-new-windows` was **not** changed. Scratch probes lived in a temporary folder (cleared on reboot). | None |
 | 2. Scaffold | **uv**, installed with `UV_NO_MODIFY_PATH=1` so shell rc files are **not** edited (`~/.local/bin` is already on PATH). Adds `~/.local/bin/uv`, `~/.local/bin/uvx`, cache in `~/.cache/uv`, data in `~/.local/share/uv`. `.venv/` lives inside the repo. | `rm -f ~/.local/bin/uv ~/.local/bin/uvx && rm -rf ~/.cache/uv ~/.local/share/uv` |
 | 3. Emoji data | Nothing. Sources are downloaded in memory; only `src/emoji_picker/data/emoji.json` (inside the repo) is written. | None |
-| 4–10 | Nothing installed. Group memberships, udev rules and apt packages are **not** touched. The window preview (Task 10) doesn't write recents. | None |
+| 4–10 | Nothing installed. Group memberships, udev rules and apt packages are **not** touched. The window preview doesn't write recents. | None |
 | 11. Service | `~/.config/systemd/user/emoji-picker.service` and its enable symlink in `~/.config/systemd/user/graphical-session.target.wants/`. At runtime: `~/.local/state/emoji-picker/recent.json`. If you create one: `~/.config/emoji-picker/config.toml`. Logs go to the user journal (rotated automatically). | See **Full teardown** |
 | apt packages | **Nothing installed.** `python3-gi`, `gir1.2-gtk-4.0`, `gir1.2-adw-1`, `python3-evdev` and `fonts-noto-color-emoji` were all already present. **Don't remove them**: Ubuntu's own tools depend on `python3-gi`. | None |
 
