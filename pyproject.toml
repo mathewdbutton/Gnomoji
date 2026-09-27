@@ -2,6 +2,7 @@
 name = "emoji-picker"
 version = "0.1.0"
 description = "Double-tap right Shift emoji picker for GNOME on Wayland"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = []  # runtime deps come from apt; see README
 
