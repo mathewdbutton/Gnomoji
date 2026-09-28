@@ -1,6 +1,6 @@
 import pytest
 
-from emoji_picker.emoji_data import Emoji, EmojiData, Recents
+from emoji_picker.emoji_data import Emoji, EmojiData, Recents, SkinTone
 
 GRIN = Emoji("😀", "grinning face", "Smileys & Emotion", ("face", "grin"))
 CRY = Emoji("😢", "crying face", "Smileys & Emotion", ("sad", "tear"))
@@ -8,10 +8,13 @@ POPPER = Emoji("🎉", "party popper", "Activities", ("celebration", "party", "t
 PARTYING = Emoji("🥳", "partying face", "Smileys & Emotion", ("celebration", "party", "hat"))
 FAMILY = Emoji("👨‍👩‍👧", "family: man, woman, girl", "People & Body", ("family",))
 HEART = Emoji("❤️", "red heart", "Smileys & Emotion", ("love", "heart"))
+WAVE = Emoji(
+    "👋", "waving hand", "People & Body", ("wave",), tones=("👋🏻", "👋🏼", "👋🏽", "👋🏾", "👋🏿")
+)
 
 
 def data():
-    return EmojiData([GRIN, CRY, POPPER, PARTYING, FAMILY, HEART])
+    return EmojiData([GRIN, CRY, POPPER, PARTYING, FAMILY, HEART, WAVE])
 
 
 # --- EmojiData -------------------------------------------------------------
@@ -66,6 +69,37 @@ def test_load_real_data():
     d = EmojiData.load()
     assert len(d.emojis) == 1898
     assert d.search("tada")[0].char == "🎉"
+
+
+def test_load_reads_tones():
+    d = EmojiData.load()
+    assert d.get("👍").tones[2] == "👍🏽"
+    assert d.get("🍔").tones == ()
+
+
+# --- Skin tones ------------------------------------------------------------
+
+
+def test_with_tone_picks_that_variant_and_keeps_the_rest():
+    medium = WAVE.with_tone(3)
+    assert medium.char == "👋🏽"
+    assert (medium.name, medium.group, medium.keywords) == (WAVE.name, WAVE.group, WAVE.keywords)
+
+
+def test_with_tone_zero_or_no_tones_leaves_emoji_alone():
+    assert WAVE.with_tone(0) is WAVE
+    assert POPPER.with_tone(3) is POPPER
+
+
+def test_in_group_and_search_apply_the_tone():
+    d = data()
+    assert [e.char for e in d.in_group("People & Body", tone=5)] == ["👨‍👩‍👧", "👋🏿"]
+    assert [e.char for e in d.search("wav", tone=1)] == ["👋🏻"]
+    assert d.in_group("People & Body") == [FAMILY, WAVE]
+
+
+def test_get_finds_toned_variants():
+    assert data().get("👋🏾") == WAVE.with_tone(4)
 
 
 def test_load_fails_loudly_on_missing_or_corrupt_file(tmp_path):
@@ -136,9 +170,43 @@ def test_resolve_skips_unknown_emoji(tmp_path):
     assert Recents(path).resolve(data()) == [GRIN]
 
 
+def test_resolve_keeps_each_recent_in_the_tone_it_was_picked(tmp_path):
+    path = tmp_path / "recent.json"
+    path.write_text('["👋🏽", "👋", "👋🏿"]')
+    assert [e.char for e in Recents(path).resolve(data())] == ["👋🏽", "👋", "👋🏿"]
+
+
 def test_unwritable_location_does_not_raise(tmp_path):
     blocker = tmp_path / "file"
     blocker.write_text("")
     r = Recents(blocker / "recent.json")
     r.add("😀")
     assert r.items == ["😀"]
+
+
+# --- SkinTone --------------------------------------------------------------
+
+
+def test_skin_tone_defaults_to_zero_without_a_file(tmp_path):
+    assert SkinTone(tmp_path / "skin-tone.json").value == 0
+
+
+def test_skin_tone_persists(tmp_path):
+    path = tmp_path / "state" / "skin-tone.json"
+    SkinTone(path).set(4)
+    assert SkinTone(path).value == 4
+
+
+@pytest.mark.parametrize("text", ["{nope", "6", "-1", '"3"', "true", "2.0"])
+def test_skin_tone_ignores_a_bad_file(tmp_path, text):
+    path = tmp_path / "skin-tone.json"
+    path.write_text(text)
+    assert SkinTone(path).value == 0
+
+
+def test_skin_tone_unwritable_location_does_not_raise(tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("")
+    tone = SkinTone(blocker / "skin-tone.json")
+    tone.set(2)
+    assert tone.value == 2

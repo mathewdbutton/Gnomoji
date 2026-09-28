@@ -3,17 +3,18 @@
 import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
 DATA_PATH = Path(__file__).parent / "data" / "emoji.json"
-RECENTS_PATH = (
-    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
-    / "emoji-picker"
-    / "recent.json"
+STATE_DIR = (
+    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "emoji-picker"
 )
+RECENTS_PATH = STATE_DIR / "recent.json"
+SKIN_TONE_PATH = STATE_DIR / "skin-tone.json"
+TONE_COUNT = 5  # skin tones 1-5, light to dark; 0 is the default (no tone)
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,13 @@ class Emoji:
     name: str
     group: str
     keywords: tuple[str, ...]
+    tones: tuple[str, ...] = ()  # the five toned variants, light to dark, if it has them
+
+    def with_tone(self, tone: int) -> "Emoji":
+        """This emoji in skin tone 1-5; itself for tone 0 or if it has no tones."""
+        if not tone or not self.tones:
+            return self
+        return replace(self, char=self.tones[tone - 1])
 
 
 class EmojiData:
@@ -29,21 +37,29 @@ class EmojiData:
         self.emojis = emojis
         self.groups = list(dict.fromkeys(e.group for e in emojis))
         self._by_char = {e.char: e for e in emojis}
+        for emoji in emojis:
+            for tone in range(1, len(emoji.tones) + 1):
+                toned = emoji.with_tone(tone)
+                self._by_char[toned.char] = toned
         self._words = [_words(e.name) for e in emojis]
 
     @classmethod
     def load(cls, path: Path = DATA_PATH) -> "EmojiData":
         """Load the bundled dataset. Errors propagate: a bad data file is a bug."""
         raw = json.loads(path.read_text(encoding="utf-8"))
-        return cls([Emoji(r["emoji"], r["name"], r["group"], tuple(r["keywords"])) for r in raw])
+        return cls([
+            Emoji(r["emoji"], r["name"], r["group"], tuple(r["keywords"]), tuple(r.get("tones", ())))
+            for r in raw
+        ])
 
     def get(self, char: str) -> Emoji | None:
+        """Any emoji by its character, toned variants included."""
         return self._by_char.get(char)
 
-    def in_group(self, group: str) -> list[Emoji]:
-        return [e for e in self.emojis if e.group == group]
+    def in_group(self, group: str, tone: int = 0) -> list[Emoji]:
+        return [e.with_tone(tone) for e in self.emojis if e.group == group]
 
-    def search(self, query: str) -> list[Emoji]:
+    def search(self, query: str, tone: int = 0) -> list[Emoji]:
         """Rank: exact name, name prefix, word-in-name prefix, keyword prefix."""
         q = " ".join(query.lower().split())
         if not q:
@@ -54,7 +70,7 @@ class EmojiData:
             if rank is not None:
                 ranked.append((rank, i, emoji))
         ranked.sort(key=lambda t: (t[0], t[1]))
-        return [emoji for _, _, emoji in ranked]
+        return [emoji.with_tone(tone) for _, _, emoji in ranked]
 
     @staticmethod
     def _rank(emoji: Emoji, words: list[str], q: str) -> int | None:
@@ -111,3 +127,34 @@ class Recents:
             tmp.replace(self.path)
         except OSError as e:
             log.warning("Could not save recents to %s: %s", self.path, e)
+
+
+class SkinTone:
+    """The chosen skin tone (0 = default, 1-5 light to dark), persisted as a JSON number."""
+
+    def __init__(self, path: Path = SKIN_TONE_PATH):
+        self.path = path
+        self.value = self._load()
+
+    def set(self, tone: int) -> None:
+        self.value = tone
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(tone), encoding="utf-8")
+            tmp.replace(self.path)
+        except OSError as e:
+            log.warning("Could not save skin tone to %s: %s", self.path, e)
+
+    def _load(self) -> int:
+        try:
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return 0
+        except (OSError, ValueError) as e:
+            log.warning("Ignoring unreadable skin tone file %s: %s", self.path, e)
+            return 0
+        if type(raw) is not int or not 0 <= raw <= TONE_COUNT:
+            log.warning("Ignoring skin tone file %s: expected 0-%d", self.path, TONE_COUNT)
+            return 0
+        return raw
