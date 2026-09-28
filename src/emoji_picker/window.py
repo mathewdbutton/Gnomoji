@@ -17,7 +17,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gtk, Pango
 
-from .emoji_data import Emoji, EmojiData, Recents
+from .emoji_data import TONE_COUNT, Emoji, EmojiData, Recents, SkinTone
 from .selection import Selection, section_in_view
 
 log = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 COLUMNS = 8
 MAX_RESULTS = 200
 RECENT = "Recently used"
+TONE_HANDS = ["✋", *(f"✋{chr(0x1F3FB + i)}" for i in range(TONE_COUNT))]
 ICONS = {
     RECENT: "🕘",
     "Smileys & Emotion": "😀",
@@ -41,6 +42,9 @@ CSS = """
 .emoji-cell { font-family: "Noto Color Emoji"; font-size: 22px; padding: 4px; }
 .emoji-tab { font-family: "Noto Color Emoji"; font-size: 16px; padding: 2px 4px; min-width: 0; }
 .emoji-tab.current { background: alpha(currentColor, 0.12); }
+.tone-picker { font-family: "Noto Color Emoji"; }
+.tone-list { background: @popover_bg_color; border-radius: 8px; padding: 4px;
+             box-shadow: 0 2px 8px alpha(black, 0.3); }
 .section-title { font-weight: bold; margin: 8px 8px 2px 8px; }
 .footer { padding: 6px 10px; }
 .drag-strip { padding: 6px 0 4px 0; }
@@ -54,6 +58,7 @@ class PickerWindow(Adw.ApplicationWindow):
         application: Adw.Application,
         data: EmojiData,
         recents: Recents,
+        skin_tone: SkinTone,
         on_pick: Callable[[Emoji], None],
         on_focused: Callable[[], None],
     ):
@@ -61,7 +66,7 @@ class PickerWindow(Adw.ApplicationWindow):
         self.set_default_size(380, 420)
         self.set_resizable(False)
         self.set_hide_on_close(True)
-        self._data, self._recents = data, recents
+        self._data, self._recents, self._skin_tone = data, recents, skin_tone
         self._on_pick, self._on_focused = on_pick, on_focused
         self._was_active = False
         self._pressed = False  # a mouse button is down inside the picker (maybe a drag)
@@ -85,7 +90,7 @@ class PickerWindow(Adw.ApplicationWindow):
         # press is a drag, not a click-away. Button 0 = any button. No "cancel" handler:
         # the WindowHandle cancels this gesture as the drag starts, just before focus goes.
         clicks = Gtk.GestureClick(button=0, propagation_phase=Gtk.PropagationPhase.CAPTURE)
-        clicks.connect("pressed", lambda *_: self._set_pressed(True))
+        clicks.connect("pressed", self._on_press)
         clicks.connect("released", lambda *_: self._set_pressed(False))
         self.add_controller(clicks)
 
@@ -95,6 +100,28 @@ class PickerWindow(Adw.ApplicationWindow):
         self._entry = Gtk.SearchEntry(placeholder_text="Search emoji…", hexpand=True)
         self._entry.set_search_delay(0)
         self._entry.connect("search-changed", self._on_search_changed)
+        # Recents keep the tone they were picked in; this applies to everything else.
+        # The list is drawn inside the window, not as a popover: GNOME takes focus
+        # from the picker when a popup closes, which reads as a click-away.
+        self._tone_list = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, visible=False,
+            halign=Gtk.Align.END, valign=Gtk.Align.START,
+        )
+        self._tone_list.add_css_class("tone-list")
+        for tone, hand in enumerate(TONE_HANDS):
+            button = Gtk.Button(label=hand, can_focus=False)
+            button.add_css_class("flat")
+            button.add_css_class("tone-picker")
+            button.connect("clicked", lambda _b, t=tone: self._on_tone_chosen(t))
+            self._tone_list.append(button)
+        self._tone_picker = Gtk.ToggleButton(
+            label=TONE_HANDS[self._skin_tone.value], tooltip_text="Skin tone", can_focus=False
+        )
+        self._tone_picker.add_css_class("tone-picker")
+        self._tone_picker.connect("toggled", self._on_tone_picker_toggled)
+        search_row = Gtk.Box(spacing=6)
+        search_row.append(self._entry)
+        search_row.append(self._tone_picker)
 
         titles = [RECENT, *self._data.groups]
         self._tabs = Gtk.Box(spacing=2, halign=Gtk.Align.CENTER)
@@ -113,7 +140,9 @@ class PickerWindow(Adw.ApplicationWindow):
         for title in titles:
             label = Gtk.Label(label=title, xalign=0)
             label.add_css_class("section-title")
-            box = self._make_box([] if title == RECENT else self._data.in_group(title))
+            box = self._make_box(
+                [] if title == RECENT else self._data.in_group(title, self._skin_tone.value)
+            )
             self._title_of[box] = title
             self._browse.append(label)
             self._browse.append(box)
@@ -151,12 +180,14 @@ class PickerWindow(Adw.ApplicationWindow):
         pill = Gtk.Box(halign=Gtk.Align.CENTER, hexpand=True)
         pill.add_css_class("drag-handle")
         strip.append(pill)
-        top.append(self._entry)
+        top.append(search_row)
         top.append(self._tabs)
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         for widget in (strip, top, Gtk.Separator(), self._scroll, Gtk.Separator(), self._footer):
             content.append(widget)
-        self.set_content(Gtk.WindowHandle(child=content))
+        self._overlay = Gtk.Overlay(child=content)
+        self._overlay.add_overlay(self._tone_list)
+        self.set_content(Gtk.WindowHandle(child=self._overlay))
 
     def _make_box(self, emojis: list[Emoji]) -> Gtk.FlowBox:
         box = Gtk.FlowBox(
@@ -198,6 +229,7 @@ class PickerWindow(Adw.ApplicationWindow):
         self._on_active_changed()
 
     def dismiss(self) -> None:
+        self._close_tone_list()
         self._was_active = False
         self.set_visible(False)
 
@@ -223,7 +255,7 @@ class PickerWindow(Adw.ApplicationWindow):
         if not query.strip():
             self._enter_browse()
             return
-        results = self._data.search(query)[:MAX_RESULTS]
+        results = self._data.search(query, self._skin_tone.value)[:MAX_RESULTS]
         self._fill(self._results, results)
         self._no_matches.set_visible(not results)
         self._active = [(results, self._results)]
@@ -232,6 +264,35 @@ class PickerWindow(Adw.ApplicationWindow):
         self._selection.reset([len(results)], select_first=True)
         self._update_highlight()
         self._update_current_tab()
+
+    def _on_tone_picker_toggled(self, button: Gtk.ToggleButton) -> None:
+        if button.get_active():
+            # Drop the list down from just under the button, lined up with its right edge.
+            ok, bounds = button.compute_bounds(self._overlay)
+            if ok:
+                self._tone_list.set_margin_top(int(bounds.get_y() + bounds.get_height()) + 2)
+                right = bounds.get_x() + bounds.get_width()
+                self._tone_list.set_margin_end(int(self._overlay.get_width() - right))
+        self._tone_list.set_visible(button.get_active())
+
+    def _close_tone_list(self) -> bool:
+        """Close the tone list; True if it was open."""
+        was_open = self._tone_picker.get_active()
+        self._tone_picker.set_active(False)
+        return was_open
+
+    def _on_tone_chosen(self, tone: int) -> None:
+        self._close_tone_list()
+        self._tone_picker.set_label(TONE_HANDS[tone])
+        self._skin_tone.set(tone)
+        toned_groups = {e.group for e in self._data.emojis if e.tones}
+        for title in toned_groups:
+            self._fill(self._group_boxes[title], self._data.in_group(title, tone))
+        if self._stack.get_visible_child_name() == "search":
+            self._on_search_changed(self._entry)
+        else:
+            self._enter_browse()
+        self._entry.grab_focus()
 
     # --- selection & scrolling ---------------------------------------------------
 
@@ -311,7 +372,8 @@ class PickerWindow(Adw.ApplicationWindow):
             Gdk.KEY_Down: (0, 1),
         }
         if keyval == Gdk.KEY_Escape:
-            self.dismiss()
+            if not self._close_tone_list():
+                self.dismiss()
             return True
         if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             selected = self._selected()
@@ -339,6 +401,20 @@ class PickerWindow(Adw.ApplicationWindow):
     def _on_hover(self, _controller, x: float, y: float, box: Gtk.FlowBox) -> None:
         child = box.get_child_at_pos(x, y)
         self._show_footer(self._emojis_of[box][child.get_index()] if child else None)
+
+    def _on_press(self, gesture: Gtk.GestureClick, _n: int, x: float, y: float) -> None:
+        self._set_pressed(True)
+        if not self._tone_picker.get_active():
+            return
+        target = self.pick(x, y, Gtk.PickFlags.DEFAULT)
+        inside = target is not None and (
+            target.is_ancestor(self._tone_list) or target is self._tone_list
+            or target.is_ancestor(self._tone_picker) or target is self._tone_picker
+        )
+        if not inside:
+            # Like a dropdown: a click elsewhere only closes the list.
+            self._close_tone_list()
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
 
     def _set_pressed(self, pressed: bool) -> None:
         log.debug("Picker pressed=%s", pressed)
@@ -370,6 +446,7 @@ if __name__ == "__main__":
             app,
             EmojiData.load(),
             Recents(),
+            SkinTone(),
             on_pick=lambda e: print("picked", e.char, e.name, flush=True),
             on_focused=lambda: print("focused", flush=True),
         )

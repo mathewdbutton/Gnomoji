@@ -25,7 +25,7 @@ from gi.repository import Adw, Gio, GLib
 
 from . import config as config_module
 from .clipboard import ClipboardKeeper
-from .emoji_data import EmojiData, Recents
+from .emoji_data import EmojiData, Recents, SkinTone
 from .flow import PasteFlow
 from .injector import Injector
 from .trigger import DoubleTapDetector, KeyboardWatcher, check_access
@@ -115,6 +115,7 @@ class EmojiPickerApp(Adw.Application):
             self,
             self._data,
             recents,
+            SkinTone(),
             on_pick=lambda emoji: self._flow.pick(emoji),
             on_focused=lambda: self._flow.on_focused(),
         )
