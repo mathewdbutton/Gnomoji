@@ -44,7 +44,8 @@ we'll see").
 | Language / toolkit | **Python 3.12 + GTK4 / libadwaita** (PyGObject) | Fastest way to prove the idea works end to end, with a native GNOME look. |
 | Popup position | **Centred** (Wayland apps can't place themselves at the cursor) | Fine for the feasibility phase. Moving the UI into a GNOME Shell extension later could open it at the cursor. |
 | v1 features | Search (name + keywords), scrollable grid with category tabs, **recently used**, **full keyboard navigation** | The core of "easy to find things in". |
-| Deferred | Skin-tone picker, kaomoji/symbols, opening at the cursor | Keep v1 small (YAGNI). |
+| Deferred | Kaomoji/symbols, opening at the cursor | Keep v1 small (YAGNI). |
+| Skin tone (added 2026-09-28) | A ✋ dropdown next to the search box; applies to the grid and search, **not recents** (each keeps the tone it was picked in); saved in `~/.local/state/emoji-picker/skin-tone.json` | Asked for after v1. Only uniform-tone variants (all people the same tone) are offered. |
 
 ## Dependencies
 

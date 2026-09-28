@@ -56,6 +56,7 @@ The rest of this file is about installs from source (`./install.sh`).
 | `~/.local/share/applications/local.emojipicker.EmojiPicker.desktop` (hidden; gives the window its name) | `./install.sh` | `./uninstall.sh` |
 | `~/.local/share/icons/hicolor/scalable/apps/local.emojipicker.EmojiPicker.svg` (the app icon) | `./install.sh` | `./uninstall.sh` |
 | `~/.local/state/emoji-picker/recent.json` (recently used emoji) | The picker, on first pick | `./uninstall.sh --purge` |
+| `~/.local/state/emoji-picker/skin-tone.json` (the chosen skin tone) | The picker, when a tone is first chosen | `./uninstall.sh --purge` |
 | `~/.local/state/emoji-picker/welcomed` (the "ready" notification was shown) | The picker, on its first start | `./uninstall.sh --purge` |
 | `~/.config/emoji-picker/config.toml` | You, if you create one | `./uninstall.sh --purge` |
 | Logs | The user journal (rotated automatically) | Nothing needed |

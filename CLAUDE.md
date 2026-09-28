@@ -86,6 +86,10 @@ never in this file.
 - **Config reloads live** (`config.Reloader` fed by a `Gio.FileMonitor` in `__main__`, kept on
   `self`: a garbage-collected monitor silently stops). `PasteFlow` snapshots the config at pick
   time (`_active`), so a reload mid-paste can't split a decoy claim from its release.
+- **No popovers or dropdown popups in the picker.** A GTK popup is its own Wayland surface, and
+  ~140 ms after one closes GNOME takes focus from the picker, so click-away closes it (measured,
+  GNOME 46, with `Gtk.DropDown` and `Gtk.MenuButton` + `Gtk.Popover`). Taking focus back isn't
+  possible (see `present()` below). The skin tone list is a plain box in a `Gtk.Overlay` instead.
 - **The window opens where GNOME places it** (top-left by default).
 - **The picker can't reopen where it was dragged.** Hiding unmaps it, so GNOME re-places it.
   Minimise-instead-of-hide keeps the position, but `present()` from our keyboard trigger (not
@@ -94,7 +98,7 @@ never in this file.
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 180 tests, lint (ruff flags unused noqa, RUF100)
+uv run pytest -q && uv run ruff check            # 200 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run
 .venv/bin/python -m emoji_picker.window          # window preview; doesn't paste (steals focus!)
 journalctl --user -u emoji-picker -f             # service logs, once installed
