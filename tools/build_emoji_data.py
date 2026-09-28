@@ -26,7 +26,11 @@ LINE = re.compile(
 
 
 def parse_emoji_test(text: str) -> list[dict]:
+    """Fully-qualified emoji in file order. A base emoji gets a "tones" list (light to
+    dark) when all five single-tone variants exist; mixed-tone variants are dropped."""
     entries, group = [], None
+    by_key: dict[tuple[int, ...], dict] = {}
+    toned: dict[tuple[int, ...], dict[int, str]] = {}
     for line in text.splitlines():
         if line.startswith("# group:"):
             group = line.split(":", 1)[1].strip()
@@ -35,12 +39,23 @@ def parse_emoji_test(text: str) -> list[dict]:
         if not match or group in SKIP_GROUPS:
             continue
         codepoints = [int(cp, 16) for cp in match["cps"].split()]
-        if any(cp in SKIN_TONES for cp in codepoints):
-            continue
-        entries.append(
-            {"emoji": "".join(map(chr, codepoints)), "name": match["name"], "group": group}
-        )
+        char = "".join(map(chr, codepoints))
+        tones = {cp for cp in codepoints if cp in SKIN_TONES}
+        if len(tones) == 1:
+            toned.setdefault(_key(codepoints), {}).setdefault(tones.pop(), char)
+        elif not tones:
+            entry = {"emoji": char, "name": match["name"], "group": group}
+            entries.append(entry)
+            by_key.setdefault(_key(codepoints), entry)
+    for key, variants in toned.items():
+        if key in by_key and len(variants) == len(SKIN_TONES):
+            by_key[key]["tones"] = [variants[tone] for tone in SKIN_TONES]
     return entries
+
+
+def _key(codepoints: list[int]) -> tuple[int, ...]:
+    """Match a toned variant to its base: the tone replaces the base's FE0F, if any."""
+    return tuple(cp for cp in codepoints if cp != 0xFE0F and cp not in SKIN_TONES)
 
 
 def keywords_by_emoji(annotation_docs: list[dict]) -> dict[str, list[str]]:
