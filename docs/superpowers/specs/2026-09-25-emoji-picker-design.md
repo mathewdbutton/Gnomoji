@@ -46,6 +46,7 @@ we'll see").
 | v1 features | Search (name + keywords), scrollable grid with category tabs, **recently used**, **full keyboard navigation** | The core of "easy to find things in". |
 | Deferred | Kaomoji/symbols, opening at the cursor | Keep v1 small (YAGNI). |
 | Skin tone (added 2026-09-28) | A ✋ dropdown next to the search box; applies to the grid and search, **not recents** (each keeps the tone it was picked in); saved in `~/.local/state/emoji-picker/skin-tone.json` | Asked for after v1. Only uniform-tone variants (all people the same tone) are offered. |
+| Clear recents (added 2026-09-29) | A **Clear** button on the "Recently used" heading empties the list at once, with no confirmation (a popup would close the picker). The cap stays a fixed 24. | Asked for after v1, to get rid of a run of one-off picks. |
 
 ## Dependencies
 
@@ -176,7 +177,8 @@ About 380×420 px, centred, no title bar, a rounded libadwaita card with its sha
 
 ### Recents and data
 
-- Up to **24** recents, most recent first. Choosing an emoji moves it to the front.
+- Up to **24** recents, most recent first. Choosing an emoji moves it to the front. The
+  heading's **Clear** button empties the list.
 - Rendered with the system **Noto Color Emoji** font. Emoji the font can't draw are
   left out when `emoji.json` is generated.
 - The window and grid are built once at startup and then shown/hidden. Filtering

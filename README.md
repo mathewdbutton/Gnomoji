@@ -58,6 +58,7 @@ To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_pick
 | Esc | Close (or close the skin tone list, if open) |
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
 | Click ✋ (next to the search box) | Choose a skin tone. It applies to every emoji that has tones, except "Recently used", which keeps the tone you picked each one in. It's remembered. |
+| Click **Clear** (on the "Recently used" heading) | Empty the recently used list. It fills up again as you pick. |
 | Run `emoji-picker` again (`PYTHONPATH=src python3 -m emoji_picker` from a source checkout) | Toggles the picker (open if closed, close if open) |
 
 ## Configuration

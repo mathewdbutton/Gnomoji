@@ -98,7 +98,7 @@ never in this file.
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 200 tests, lint (ruff flags unused noqa, RUF100)
+uv run pytest -q && uv run ruff check            # 203 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run
 .venv/bin/python -m emoji_picker.window          # window preview; doesn't paste (steals focus!)
 journalctl --user -u emoji-picker -f             # service logs, once installed
