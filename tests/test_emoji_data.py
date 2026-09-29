@@ -184,6 +184,34 @@ def test_unwritable_location_does_not_raise(tmp_path):
     assert r.items == ["😀"]
 
 
+def test_clear_empties_the_list_and_the_file(tmp_path):
+    path = tmp_path / "recent.json"
+    r = Recents(path)
+    r.add("😀")
+    r.add("🎉")
+    r.clear()
+    assert r.items == []
+    assert Recents(path).items == []
+
+
+def test_add_after_clear_starts_a_new_list(tmp_path):
+    path = tmp_path / "recent.json"
+    r = Recents(path)
+    r.add("😀")
+    r.clear()
+    r.add("🎉")
+    assert Recents(path).items == ["🎉"]
+
+
+def test_clear_in_unwritable_location_does_not_raise(tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("")
+    r = Recents(blocker / "recent.json")
+    r.add("😀")
+    r.clear()
+    assert r.items == []
+
+
 # --- SkinTone --------------------------------------------------------------
 
 

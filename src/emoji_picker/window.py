@@ -46,6 +46,7 @@ CSS = """
 .tone-list { background: @popover_bg_color; border-radius: 8px; padding: 4px;
              box-shadow: 0 2px 8px alpha(black, 0.3); }
 .section-title { font-weight: bold; margin: 8px 8px 2px 8px; }
+.clear-recents { font-size: small; min-height: 0; padding: 0 6px; margin: 6px 4px 0 0; }
 .footer { padding: 6px 10px; }
 .drag-strip { padding: 6px 0 4px 0; }
 .drag-handle { background: alpha(currentColor, 0.25); border-radius: 2px; min-width: 36px; min-height: 4px; }
@@ -135,18 +136,28 @@ class PickerWindow(Adw.ApplicationWindow):
             self._tab_buttons[title] = button
 
         self._browse = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self._titles: dict[str, Gtk.Label] = {}
+        self._titles: dict[str, Gtk.Widget] = {}
         self._group_boxes: dict[str, Gtk.FlowBox] = {}
         for title in titles:
             label = Gtk.Label(label=title, xalign=0)
             label.add_css_class("section-title")
+            heading = label
+            if title == RECENT:
+                label.set_hexpand(True)
+                clear = Gtk.Button(label="Clear", tooltip_text="Clear recently used", can_focus=False)
+                clear.add_css_class("flat")
+                clear.add_css_class("clear-recents")
+                clear.connect("clicked", self._on_clear_recents)
+                heading = Gtk.Box()
+                heading.append(label)
+                heading.append(clear)
             box = self._make_box(
                 [] if title == RECENT else self._data.in_group(title, self._skin_tone.value)
             )
             self._title_of[box] = title
-            self._browse.append(label)
+            self._browse.append(heading)
             self._browse.append(box)
-            self._titles[title] = label
+            self._titles[title] = heading
             self._group_boxes[title] = box
 
         self._results = self._make_box([])
@@ -292,6 +303,11 @@ class PickerWindow(Adw.ApplicationWindow):
             self._on_search_changed(self._entry)
         else:
             self._enter_browse()
+        self._entry.grab_focus()
+
+    def _on_clear_recents(self, _button: Gtk.Button) -> None:
+        self._recents.clear()
+        self._enter_browse()
         self._entry.grab_focus()
 
     # --- selection & scrolling ---------------------------------------------------

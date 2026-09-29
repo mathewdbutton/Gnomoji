@@ -103,6 +103,10 @@ class Recents:
         del self.items[self.limit :]
         self._save()
 
+    def clear(self) -> None:
+        self.items = []
+        self._save()
+
     def resolve(self, data: EmojiData) -> list[Emoji]:
         return [emoji for c in self.items if (emoji := data.get(c)) is not None]
 
