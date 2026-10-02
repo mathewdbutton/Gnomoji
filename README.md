@@ -60,9 +60,9 @@ Don't mix a package with `install.sh` on the same machine: the home-folder copy 
 ### From source
 
 Clone the repo, then run `./install.sh`. It copies the code into your home folder, so re-run
-it after you change anything. To try your changes without installing, point `install.sh` at
-the clone first: the extension has to be installed for the double-tap to work at all, there's
-no way to run the picker standalone.
+it after you change anything. The double-tap needs the extension installed to work at all —
+there's no way to run the picker standalone — so to try your changes, run `./install.sh` from
+the clone rather than running the app directly.
 
 ## Use
 

@@ -14,7 +14,7 @@ doesn't appear in App Center's search or installed list), or `sudo apt remove em
 
 | What | Where |
 |---|---|
-| App code | `/usr/lib/emoji-picker/emoji_picker/` |
+| App code | `/usr/lib/emoji-picker/` (the `emoji_picker/` package, plus the shared `enable-for-everyone`/`disable-for-everyone` helper scripts) |
 | Launcher | `/usr/bin/emoji-picker` |
 | User service, enabled for everyone | `/usr/lib/systemd/user/emoji-picker.service` |
 | GNOME Shell extension | `/usr/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/` |

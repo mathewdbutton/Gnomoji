@@ -95,9 +95,9 @@ packaging/build.sh                               # .deb, .rpm, .tar.gz from HEAD
 ```
 
 Runtime uses **only** `/usr/bin/python3` plus distro packages. `.venv` (uv, `--system-site-packages`)
-is for pytest/ruff only. No pip packages at runtime. A source install (`./install.sh`) runs from
-the working tree, so the checked-out branch is what runs. A `.deb`/`.rpm` install runs the
-packaged copy under `/usr/lib/emoji-picker`.
+is for pytest/ruff only. No pip packages at runtime. A source install (`./install.sh`) copies the
+code into `~/.local/share/emoji-picker`, so re-run it after changing code. A `.deb`/`.rpm` install
+runs the packaged copy under `/usr/lib/emoji-picker`.
 
 ## Packaging and releasing
 
