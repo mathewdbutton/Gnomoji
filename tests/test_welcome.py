@@ -1,4 +1,4 @@
-from emoji_picker.welcome import INVALID_APP, KEEP_MS, Welcome
+from emoji_picker.welcome import INVALID_APP, KEEP_MS, Welcome, message
 
 
 class FakeGnome:
@@ -30,73 +30,47 @@ class FakeTimers:
             fn()
 
 
-def make(tmp_path, gnome, tries=30):
+def make(gnome, tries=30):
     timers = FakeTimers()
-    marker = tmp_path / "emoji-picker" / "welcomed"
-    return Welcome(gnome.send, gnome.withdraw, timers.schedule, marker, tries=tries), timers, marker
+    return Welcome(gnome.send, gnome.withdraw, timers.schedule, tries=tries), timers
 
 
-def test_first_start_sends_once_and_records_it(tmp_path):
+def test_sends_once():
     gnome = FakeGnome(None)
-    welcome, timers, marker = make(tmp_path, gnome)
+    welcome, timers = make(gnome)
     welcome.start()
     timers.run_all()
     assert gnome.sent == 1
-    assert marker.exists()
 
 
-def test_not_sent_again_once_recorded(tmp_path):
-    gnome = FakeGnome()
-    welcome, _, marker = make(tmp_path, gnome)
-    marker.parent.mkdir(parents=True)
-    marker.touch()
-    welcome.start()
-    assert gnome.sent == 0
-
-
-def test_retries_while_gnome_does_not_know_the_app_yet(tmp_path):
+def test_retries_while_gnome_does_not_know_the_app_yet():
     # GNOME takes a few seconds to notice a newly installed desktop file.
     gnome = FakeGnome(INVALID_APP, INVALID_APP, None)
-    welcome, timers, marker = make(tmp_path, gnome)
+    welcome, timers = make(gnome)
     welcome.start()
-    assert not marker.exists()
     timers.run_all()
     assert gnome.sent == 3
-    assert marker.exists()
 
 
-def test_gives_up_after_the_last_try_without_recording(tmp_path):
+def test_gives_up_after_the_last_try():
     gnome = FakeGnome(INVALID_APP, INVALID_APP)
-    welcome, timers, marker = make(tmp_path, gnome, tries=2)
+    welcome, timers = make(gnome, tries=2)
     welcome.start()
     timers.run_all()
     assert gnome.sent == 2
-    assert not marker.exists()  # try again at the next start
 
 
-def test_other_errors_give_up_without_retrying(tmp_path):
+def test_other_errors_give_up_without_retrying():
     gnome = FakeGnome("org.freedesktop.DBus.Error.ServiceUnknown")
-    welcome, timers, marker = make(tmp_path, gnome)
+    welcome, timers = make(gnome)
     welcome.start()
     timers.run_all()
     assert gnome.sent == 1
-    assert not marker.exists()
 
 
-def test_unwritable_location_skips_the_welcome_without_raising(tmp_path, caplog):
-    blocker = tmp_path / "not-a-dir"
-    blocker.write_text("")
-    gnome = FakeGnome()
-    timers = FakeTimers()
-    # Can't record the welcome, so skip it rather than show it at every start.
-    Welcome(gnome.send, gnome.withdraw, timers.schedule, blocker / "welcomed").start()
-    assert gnome.sent == 0
-    assert "welcome" in caplog.text
-
-
-def test_accepted_welcome_is_withdrawn_after_a_minute(tmp_path):
+def test_accepted_welcome_is_withdrawn_after_a_minute():
     gnome = FakeGnome(None)
-    welcome, timers, _ = make(tmp_path, gnome)
+    welcome, timers = make(gnome)
     welcome.start()
     assert [ms for ms, _ in timers.pending] == [KEEP_MS]
     assert KEEP_MS == 60_000
@@ -105,9 +79,21 @@ def test_accepted_welcome_is_withdrawn_after_a_minute(tmp_path):
     assert gnome.withdrawn == 1
 
 
-def test_nothing_withdrawn_when_never_shown(tmp_path):
+def test_nothing_withdrawn_when_never_shown():
     gnome = FakeGnome("org.freedesktop.DBus.Error.ServiceUnknown")
-    welcome, timers, _ = make(tmp_path, gnome)
+    welcome, timers = make(gnome)
     welcome.start()
     timers.run_all()
     assert gnome.withdrawn == 0
+
+
+def test_message_when_the_extension_is_running():
+    assert message(True) == (
+        "Emoji Picker is ready", "Double-tap right Shift in a text field to open it."
+    )
+
+
+def test_message_when_a_log_out_is_needed():
+    assert message(False) == (
+        "Emoji Picker is installed", "Log out and back in once to finish setting it up."
+    )

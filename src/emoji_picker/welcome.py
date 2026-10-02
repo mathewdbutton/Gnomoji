@@ -1,17 +1,10 @@
-"""The one-off "Emoji Picker is ready" notification on the very first start."""
+"""The one-off welcome notification after the extension is first switched on."""
 
 import logging
-import os
 from collections.abc import Callable
-from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-WELCOMED_PATH = (
-    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
-    / "emoji-picker"
-    / "welcomed"
-)
 # GNOME's answer while it hasn't noticed our newly installed desktop file yet (it
 # took ~6 s on GNOME 46). The notification is dropped, so we retry.
 INVALID_APP = "org.gtk.Notifications.Error.InvalidApp"
@@ -20,6 +13,15 @@ TRIES = 30
 # The banner hides by itself; this also clears it from the notification list, but
 # not so soon that someone who looked away misses it.
 KEEP_MS = 60_000
+
+READY = ("Emoji Picker is ready", "Double-tap right Shift in a text field to open it.")
+LOG_OUT = ("Emoji Picker is installed", "Log out and back in once to finish setting it up.")
+
+
+def message(active: bool) -> tuple[str, str]:
+    """Title and body: ready if the extension is running, else ask for one log-out."""
+    return READY if active else LOG_OUT
+
 
 # send(on_result) delivers the notification and calls on_result(None) once it's
 # accepted, or on_result(<D-Bus error name>) if it isn't.
@@ -32,21 +34,12 @@ class Welcome:
         send: Send,
         withdraw: Callable[[], None],
         schedule: Callable[[int, Callable[[], None]], None],
-        path: Path = WELCOMED_PATH,
         tries: int = TRIES,
     ):
         self._send, self._withdraw, self._schedule = send, withdraw, schedule
-        self._path, self._left = path, tries
+        self._left = tries
 
     def start(self) -> None:
-        if self._path.exists():
-            return
-        try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as e:
-            # Can't record it, so skip it rather than show it at every start.
-            log.warning("Skipping the welcome notification: can't write %s: %s", self._path, e)
-            return
         self._try()
 
     def _try(self) -> None:
@@ -57,10 +50,6 @@ class Welcome:
         if error is None:
             log.info("Welcome notification shown")
             self._schedule(KEEP_MS, self._withdraw)
-            try:
-                self._path.touch()
-            except OSError as e:
-                log.warning("Couldn't record the welcome in %s: %s", self._path, e)
         elif error == INVALID_APP and self._left > 0:
             self._schedule(RETRY_MS, self._try)
         else:
