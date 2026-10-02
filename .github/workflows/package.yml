@@ -1,5 +1,6 @@
-# Builds and checks the .deb on pull requests. On a v* tag it also creates a draft GitHub
-# Release with the .deb attached; publish it by hand after trying it.
+# Tests, builds and smoke-tests the .deb and .rpm on pull requests. On a v* tag it also
+# creates a draft GitHub Release with the .deb, .rpm and tarball; publish it by hand after
+# trying them.
 name: Package
 
 on:
@@ -11,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  deb:
+  build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -25,20 +26,53 @@ jobs:
             exit 1
           fi
 
-      - name: Install test tools
-        run: sudo apt-get update && sudo apt-get install -y shellcheck python3-pytest
+      - name: Install test and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck python3-pytest python3-gi gir1.2-gtk-4.0 \
+            gir1.2-adw-1 gjs rpm fonts-noto-color-emoji
 
-      - name: Package tests
-        run: python3 -m pytest -q -p no:cacheprovider tests/test_maintainer_scripts.py tests/test_package.py
+      - name: Tests
+        run: python3 -m pytest -q -p no:cacheprovider
 
       - name: Build
-        run: packaging/build-deb.sh
+        run: packaging/build.sh
 
-      - name: Smoke test
-        run: packaging/smoke-test.sh dist/emoji-picker_*_all.deb
+      - name: Smoke test the .deb
+        run: packaging/smoke-test-deb.sh dist/emoji-picker_*_all.deb
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  rpm:
+    needs: build
+    runs-on: ubuntu-24.04
+    container: fedora:44
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Smoke test the .rpm
+        run: bash packaging/smoke-test-rpm.sh dist/emoji-picker-*.noarch.rpm
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, rpm]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
       - name: Draft release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/emoji-picker_*_all.deb --draft --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/emoji-picker_*_all.deb \
+            dist/emoji-picker-*.noarch.rpm dist/emoji-picker-*.tar.gz \
+            --draft --title "$GITHUB_REF_NAME" --generate-notes
