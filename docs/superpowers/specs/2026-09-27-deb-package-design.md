@@ -1,5 +1,8 @@
 # Emoji Picker .deb Package — Design
 
+> **Superseded in part (2026-10-02):** triggering, inserting and installing are now in
+> `2026-10-02-v2-port-design.md`. This spec stays the reference for what that one doesn't change.
+
 **Status:** Approved; implemented on build/deb-package.
 **Date:** 2026-09-27
 **Branch:** `build/deb-package`

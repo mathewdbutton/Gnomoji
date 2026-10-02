@@ -1,8 +1,8 @@
 # Emoji Picker: notes for Claude
 
-A Mac-style emoji picker for GNOME on **Wayland** (built on Ubuntu 24.04 / GNOME 46).
-Double-tap **right Shift**, search or browse, press Enter, and the emoji is pasted into the
-focused field. The old clipboard **text** comes back afterwards.
+A Mac-style emoji picker for GNOME on **Wayland** (built on Ubuntu 24.04 / GNOME 46; GNOME
+47-50 supported too, see below). Double-tap **right Shift**, search or browse, press Enter,
+and a small GNOME Shell extension types the emoji into the focused field. No clipboard.
 
 Machine-specific notes, project status and working preferences live in `CLAUDE.local.md`
 (git-ignored, so it may not exist). Anything about one particular machine or person goes there,
@@ -10,133 +10,133 @@ never in this file.
 
 ## Read these before changing anything
 
-- `docs/superpowers/specs/2026-09-25-emoji-picker-design.md` is the design and the source of truth.
-  Its **"Feasibility results"** section records platform facts proven by hand. Don't
-  "simplify" code that depends on them.
-- `UNINSTALL.md` lists everything the project puts outside the repo, both from `install.sh` and
-  from the `.deb`. **Any change that installs something outside the repo, by either route, must
-  update it in the same commit.**
+- `docs/superpowers/specs/2026-10-02-v2-port-design.md` is the current design for how the
+  double-tap is triggered and the emoji inserted (the GNOME Shell extension), and for all
+  three install routes (`.deb`, `.rpm`, `install.sh`). Don't "simplify" code that depends on
+  its facts.
+- `docs/superpowers/specs/2026-09-25-emoji-picker-design.md` stays the reference for the
+  window, emoji data, search, recents and skin tone — triggering and inserting there are
+  superseded (see the pointer at its top).
+- `docs/superpowers/specs/2026-09-27-deb-package-design.md` stays the reference for the `.deb`
+  beyond what the v2-port spec changes (its udev parts are superseded; see its own pointer).
+- `UNINSTALL.md` lists everything the project puts outside the repo, from all three install
+  routes. **Any change that installs something outside the repo, by any route, must update it
+  in the same commit.**
 - `README.md` covers install, use, config and troubleshooting.
 - **User-facing files stay general**: `README.md`, `UNINSTALL.md`, `install.sh`, `uninstall.sh`,
-  `udev/`, `systemd/`, `desktop/` and `packaging/`. People install from them on fresh machines.
-- `docs/superpowers/specs/2026-09-27-deb-package-design.md` is the design for the `.deb`.
+  `extension/`, `systemd/`, `desktop/` and `packaging/`. People install from them on fresh
+  machines.
 
 ## Hard-won platform facts (don't regress these)
 
-- **Paste chord is Shift+Insert.** GTK apps ignore Ctrl+Shift+V. Terminals are out of scope.
-- **The clipboard can only be claimed during user input in our window.** `PasteFlow.pick`
-  must call `ClipboardKeeper.claim` synchronously from the Enter/click handler, before
-  hiding. A claim from a timer is silently refused.
-- **Never claim the clipboard a second time.** After the initial claim, we only change
-  what our `SwitchingText` provider serves (arm) or give up ownership (release,
-  `set_content(None)`); see the next bullet.
-- **Mutter caches the clipboard's text/plain value the instant a claim happens**, and
-  serves that cached copy once our ownership ends. This is why we claim/arm/release rather
-  than claim-and-swap-back: claim with a **decoy** (the saved old text) so Mutter's instant
-  copy is the old text, not the emoji; **arm** (switch the provider to the emoji) right before
-  the paste chord; **release** (`set_content(None)`) afterwards so Mutter takes over serving
-  the decoy, with no need to keep the picker running or keep our window focused. Claiming
-  still needs input in our window (see above); releasing does not. Release happens
-  `release_after_read_ms` (50 ms) after the target app's last read of the emoji
-  (`arm(on_read=...)`; each read restarts the wait), with `restore_delay_ms` as the fallback
-  when nothing reads it.
-- **On re-show, GTK may not re-emit `notify::is-active`** (it can keep `is-active` True
-  across hide/show), so `_on_active_changed`'s `on_focused → save()` path can be silently
-  skipped, leaving a stale saved text served as the decoy. But GTK reliably emits the
-  clipboard's own `changed` signal carrying the current offer when our window gains focus
-  (Wayland only sends selection offers to the focused client), so `ClipboardKeeper` also
-  listens for `changed` and re-`save()`s on any non-local change that carries text.
-  `show_picker` also calls `_on_active_changed()` once so click-away works after re-show.
-- **PyGObject 3.48:** `SwitchingText.do_get_value(self)` must return `(True, text)`. Async
-  `do_write_mime_type_async` is broken when GTK calls it from C. Tests check the provider
-  through GTK's C API with ctypes (`served_by_gtk` in `tests/test_clipboard.py`).
-- **Only text is restored.** An image or file on the clipboard is replaced by the emoji
-  (accepted limitation).
-- **Keyboard remappers (Toshy, keyd, xremap) grab the physical keyboards** and re-emit keys
-  from their own virtual keyboard. The watcher must NOT ignore other virtual keyboards; it only
-  skips our own 2-key one (`Injector.NAME`).
-- **Keyboard and `/dev/uinput` access comes from `udev/70-emoji-picker.rules`**: `TAG+="uaccess"`
-  on keyboards and uinput. logind's `73-seat-late.rules` turns the tag into an ACL for the active
-  seat user on the `change` trigger, so no group and no log-out. `install.sh` tests real access,
-  not group membership, and asks once before running sudo for packages and the rule. Older
-  installs used `70-emoji-picker-uinput.rules` + the `input` group; `uninstall.sh --purge`
-  removes either rule.
-- **No python-evdev:** `linux_input.py` does the evdev reads and the uinput keyboard with stdlib
-  `fcntl`/`struct`. Its ioctl numbers are tested against the kernel's values, and
-  `tests/test_linux_input.py` has a real uinput round trip (skipped without access).
+- **Extensions can't see keys going to apps**, so the trigger is Mutter's "locate pointer" key
+  (`org.gnome.mutter locate-pointer-key`), which Mutter runs for extensions and still passes
+  through to the app. `extension/extension.js` points it at `Shift_R` while enabled and counts
+  taps on the `global` `'locate-pointer'` signal; it restores the previous value on disable.
+  GNOME doesn't disable extensions at log-out, so if the picker was still enabled at your last
+  log-out, `locate-pointer-key` is still `Shift_R` until something resets it (`uninstall.sh`
+  does; see `UNINSTALL.md`).
+- **The insert waits for focus to return** to the window that was focused at the double-tap,
+  and for that window's text field to check in with GNOME's input method (10-25 ms normally;
+  the extension gives up after 200 ms with focus back but no text field, or 1.5 s if focus
+  never comes back). Apps without GNOME input-method focus — Qt apps like Konsole, X11 apps —
+  can't be reached this way. There is deliberately no clipboard fallback.
+- **Extension code only loads at the next log-in**, and GNOME only notices newly installed
+  extension files at log-in too. Extensions are switched on per person, not system-wide, which
+  is why `extension_setup.enable_once` exists: the app switches the extension on for the
+  current person on its first start (gated by `~/.local/state/emoji-picker/extension-enabled`,
+  kept separate from 0.2.x's `welcomed` marker so people upgrading from 0.2.x get the
+  switch-on too, even though they already have `welcomed`).
+- **GNOME 50** (e.g. Fedora 44, Ubuntu 26.04): not yet checked by hand (pending).
 - **GNOME needs ~6 s to notice a new desktop file** (measured, GNOME 46). Until then
   `org.gtk.Notifications.AddNotification` fails with `InvalidApp` and the notification is lost;
   `Gio.Application.send_notification` hides that error. So the welcome goes over D-Bus directly
   (`__main__._notifications`) and `Welcome` retries every second (up to 30 s).
 - **GNOME Shell only rescans icons when the theme's top folder's mtime changes**, not a
-  subfolder's. `install.sh`/`uninstall.sh` `touch ~/.local/share/icons/hicolor` after changing the
-  icon; without it notifications show "icon missing" placeholders until the next log-in.
+  subfolder's. `install.sh`/`uninstall.sh` `touch ~/.local/share/icons/hicolor` after changing
+  the icon; without it notifications show "icon missing" placeholders until the next log-in.
 - **Memory: judge by PSS, not RSS** (`/proc/<pid>/smaps_rollup`); over half of RSS is shared
   libraries. GTK's GPU renderer loads Mesa/LLVM/Vulkan (+~70 MB RSS) and grows texture caches,
   so `__main__.py` defaults `GSK_RENDERER=cairo` (an explicit env var still wins). Measured:
   214 MB RSS / 104 MB PSS → 112 MB RSS / 61 MB PSS, flat with use. The emoji count barely
   matters. Don't remove it without measuring.
-- **fontconfig can resolve "Noto Color Emoji" to a slow vector (COLRv1) font**, e.g. a hand-installed
-  `NotoColorEmoji-Regular.ttf` outranking the distro's fast CBDT bitmap font. First layout of
-  ~1,900 emoji then blocks the GTK main loop for minutes. `fonts.py`'s `use_fast_emoji_font()`
-  points `FONTCONFIG_FILE` at a bundled conf that hides it, for our process only, and must run
-  before the first `from gi.repository import ...` anywhere (that import initialises fontconfig;
-  `import gi` / `gi.require_version()` alone don't). The same font makes *other* apps slow to
-  draw each new emoji the first time, which looks like a paste delay; the picker's side is ~0.1 s.
+- **fontconfig can resolve "Noto Color Emoji" to a slow vector (COLRv1) font**, e.g. a
+  hand-installed `NotoColorEmoji-Regular.ttf` outranking the distro's fast CBDT bitmap font.
+  First layout of ~1,900 emoji then blocks the GTK main loop for minutes. `fonts.py`'s
+  `use_fast_emoji_font()` points `FONTCONFIG_FILE` at a bundled conf that hides it, for our
+  process only, and must run before the first `from gi.repository import ...` anywhere (that
+  import initialises fontconfig; `import gi` / `gi.require_version()` alone don't). The same
+  font makes *other* apps slow to draw each new emoji the first time, which looked like a ~1 s
+  insert delay on v2's first Firefox test (2026-09-27, parked over it); retested 2026-10-02
+  with only the fast bitmap font installed: instant in a fresh text box, a second box, and
+  after restarting Firefox.
 - **Config reloads live** (`config.Reloader` fed by a `Gio.FileMonitor` in `__main__`, kept on
-  `self`: a garbage-collected monitor silently stops). `PasteFlow` snapshots the config at pick
-  time (`_active`), so a reload mid-paste can't split a decoy claim from its release.
+  `self`: a garbage-collected monitor silently stops). On a change the app re-sends
+  `Configure(a{sv})` to the extension with the new `double-tap-ms`; the extension also gets it
+  fresh whenever it emits `Ready` (on enable), so whichever of the two starts first still ends
+  up configured.
 - **No popovers or dropdown popups in the picker.** A GTK popup is its own Wayland surface, and
   ~140 ms after one closes GNOME takes focus from the picker, so click-away closes it (measured,
   GNOME 46, with `Gtk.DropDown` and `Gtk.MenuButton` + `Gtk.Popover`). Taking focus back isn't
   possible (see `present()` below). The skin tone list is a plain box in a `Gtk.Overlay` instead.
 - **The window opens where GNOME places it** (top-left by default).
 - **The picker can't reopen where it was dragged.** Hiding unmaps it, so GNOME re-places it.
-  Minimise-instead-of-hide keeps the position, but `present()` from our keyboard trigger (not
+  Minimise-instead-of-hide keeps the position, but `present()` from the double-tap trigger (not
   input in our window) gets no focus: GNOME shows a "… is ready" notification instead.
 
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 203 tests, lint (ruff flags unused noqa, RUF100)
-PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run
-.venv/bin/python -m emoji_picker.window          # window preview; doesn't paste (steals focus!)
+uv run pytest -q && uv run ruff check            # 182 tests, lint (ruff flags unused noqa, RUF100)
+PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run; inserts only with the extension installed
+.venv/bin/python -m emoji_picker.window          # window preview; doesn't insert (steals focus!)
 journalctl --user -u emoji-picker -f             # service logs, once installed
-packaging/build-deb.sh                           # .deb from HEAD into dist/ (uncommitted edits aren't in it)
+packaging/build.sh                               # .deb, .rpm, .tar.gz from HEAD into dist/ (.rpm needs rpm installed)
 ```
 
 Runtime uses **only** `/usr/bin/python3` plus distro packages. `.venv` (uv, `--system-site-packages`)
 is for pytest/ruff only. No pip packages at runtime. A source install (`./install.sh`) runs from
-the working tree, so the checked-out branch is what runs. A `.deb` install runs the packaged copy.
+the working tree, so the checked-out branch is what runs. A `.deb`/`.rpm` install runs the
+packaged copy under `/usr/lib/emoji-picker`.
 
 ## Packaging and releasing
 
-`packaging/build-deb.sh` builds `emoji-picker_<version>_all.deb` from `git archive HEAD`. The
-version comes from `pyproject.toml`. The service and desktop entry are `install.sh`'s templates
-with `@SRC@` lines removed, so there's one source for each. The unit's `ConditionUser=!@system`
-keeps it off the login screen: `systemctl --global enable` applies to every user manager,
-including system users, and GDM's greeter also runs a user session that reaches
-`graphical-session.target`. The maintainer scripts in `packaging/deb/` enable the user service
-globally and restart it in every running user manager that has an active graphical session
-(`systemctl --user --machine=<user>@.host`). Every step past unpacking is best-effort and never
-fails the install; `prerm upgrade` only cleans bytecode (`py3clean`), never stops or disables the
-service. `tests/test_maintainer_scripts.py` runs them against fake
-`systemctl`/`loginctl`/`udevadm`/`py3compile`/`py3clean`. App Center never lists a side-loaded
-.deb in its search or installed list, with or without AppStream metadata, but reopening the .deb
-file offers Uninstall, and a newer .deb shows Install (which upgrades).
+One script, `packaging/build.sh [OUT_DIR]`, builds all three formats from `git archive HEAD`
+(committed files only; uncommitted edits aren't in any of them). All three install the same
+tree, just at a different prefix: `/usr/lib/emoji-picker/emoji_picker/` for the `.deb`/`.rpm`,
+`~/.local/share/emoji-picker/emoji_picker/` for `install.sh`. Code is reached via `PYTHONPATH`
+in the launcher, service and desktop entry (`packaging/emoji-picker`, `systemd/emoji-picker.service`,
+`desktop/*.desktop`, all templated with `@APPDIR@`) rather than Python's own site-packages:
+Fedora's site-packages path changes with each Python version, and this way both formats share
+one layout.
 
-CI (`.github/workflows/package.yml`) runs the package tests, builds, and install/remove
-smoke-tests (`packaging/smoke-test.sh`) on every PR. To release:
+The after-install/before-removal logic is shared by the `.deb`'s `postinst`/`prerm` and the
+`.rpm`'s `%post`/`%preun`, written once as `packaging/enable-for-everyone` and
+`packaging/disable-for-everyone`: enable the user service globally
+(`systemctl --global enable`) and restart it in every running user manager with an active
+graphical session; before removal (not upgrade), stop it in running sessions and disable it
+globally. Every step past unpacking is best-effort and never fails the install or removal. The
+`.deb` compiles bytecode with `py3compile`/`py3clean`; the `.rpm` runs
+`python3 -m compileall -q` in `%post` and deletes `__pycache__` folders in `%preun` on removal
+— both pointed at `/usr/lib/emoji-picker`. `tests/test_maintainer_scripts.py` runs the shared
+scripts against fake `systemctl`/`loginctl`; `tests/test_package.py` builds all three and checks
+their contents; `tests/test_install_scripts.py` runs `install.sh`/`uninstall.sh` in a throwaway
+home against fake `systemctl`/`gnome-extensions`/`gnome-shell`/`gsettings`/`fc-list`.
 
-1. Bump `version` in `pyproject.toml`, commit, and merge to `main`.
-2. `git tag v<version> && git push origin v<version>`. CI checks the tag matches and creates a
-   **draft** release with the `.deb`.
-3. Download the `.deb` from the draft, install it, try it, then publish the release.
+CI (`.github/workflows/package.yml`) on every pull request: runs pytest (with `gjs` installed,
+so the extension's JS tests run too), builds all three with `packaging/build.sh`, then
+smoke-tests installing and removing the `.deb` on the Ubuntu runner and the `.rpm` in a
+`fedora:44` container. On a `v*` tag: checks the tag matches `pyproject.toml`'s version, then
+drafts a GitHub Release with all three files (`.deb`, `.rpm`, `.tar.gz`).
 
-## Parked alternative: v2 on branch `build/shell-extension`
+To release:
 
-A GNOME Shell extension version (no clipboard, no udev) is built on `build/shell-extension`, but
-parked: in Firefox the first emoji inserted into each text box shows ~1 s late (Firefox side,
-unexplained). See that branch's `docs/superpowers/specs/2026-09-27-shell-extension-design.md`
-"Acceptance results". `main` stays on this clipboard design. An IBus input method is the
-"proper" future approach (see the spec's Follow-ups).
+1. Bump `version` in `pyproject.toml`, run `uv lock`, commit, and merge to `main`.
+2. `git tag v<version> && git push origin v<version>`. CI checks the tag and creates a
+   **draft** release with the `.deb`, `.rpm` and `.tar.gz`.
+3. Download the three files from the draft, try each install route, then publish the release.
+
+## v2's origin
+
+v2 was developed on the local branch `build/shell-extension` and ported here in 0.3.0; that
+branch is unscrubbed, never push it.

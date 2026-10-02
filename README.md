@@ -1,49 +1,68 @@
 # Emoji Picker
 
-Double-tap **right Shift** anywhere in GNOME (Wayland) to open an emoji picker. Search or
-browse, press Enter (or click), and the emoji is pasted into the field you were typing in.
-Your clipboard is put back afterwards.
+Double-tap **right Shift** in a text field in GNOME (Wayland) to open an emoji picker. Search
+or browse, then Enter (or click) types the emoji straight into the field. A small GNOME Shell
+extension does the typing: no clipboard, no special keyboard access, and no `sudo` for the
+picker itself.
 
 ## Requirements
 
-- **GNOME on Wayland.** Tested on Ubuntu 24.04 (GNOME 46). Other desktops and X11 are untested.
-- Ubuntu/Debian (apt) or Fedora (dnf, untested). `./install.sh` installs what's missing.
+- **GNOME 46-50 on Wayland.** Tested on Ubuntu 24.04 (GNOME 46). GNOME 47-50 (for example
+  Fedora 44, Ubuntu 26.04) is supported but not yet tested by hand.
+- Python 3.11+ with GTK 4, libadwaita and the Noto Color Emoji font. All of this is standard on
+  an Ubuntu or Fedora GNOME desktop already.
 
 ## Install
 
+Pick whichever fits. All three install the same app; only how they get onto your machine
+differs.
+
+### Ubuntu/Debian (.deb)
+
 Download `emoji-picker_<version>_all.deb` from the
-[latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest) and double-click
-it. App Center opens; click **Install**. It warns that the package comes from outside the Ubuntu
-store: that's expected for a download like this.
-
-The first time it starts for you, a notification says the picker is ready, within a few
-seconds. No log-out needed (on a reinstall or upgrade it just starts, with no notification).
-
-What the package sets up:
-
-- **Packages:** Python GTK 4, libadwaita and a colour emoji font, if missing. A standard Ubuntu
-  GNOME desktop already has them.
-- **Keyboard access:** a udev rule lets the person logged in at the screen read keyboards (to spot
-  the right-Shift double-tap) and create a virtual keyboard (to send the paste keystroke). Access
-  is tied to your active desktop session, like a webcam or sound card: other users and remote
-  logins don't get it. See [Privacy and security](#privacy-and-security).
-- **The picker** as a user service, turned on for every account on the computer. It starts when
-  you log in.
+[latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest) and
+double-click it. App Center opens; click **Install**. It warns that the package comes from
+outside the Ubuntu store: that's expected for a download like this.
 
 Prefer a terminal? `sudo apt install ./emoji-picker_<version>_all.deb`
 
-**Updating:** download the newer `.deb` and install it the same way. App Center shows **Install**
-again for the newer version, and clicking it does the update. The running picker switches to the new version.
+### Fedora (.rpm)
+
+Download `emoji-picker-<version>-1.noarch.rpm` from the
+[latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest), then:
+
+```bash
+sudo dnf install ./emoji-picker-<version>-1.noarch.rpm
+```
+
+### Any distro, no sudo (tarball)
+
+```bash
+tar -xzf emoji-picker-<version>.tar.gz
+cd emoji-picker-<version>
+./install.sh
+```
+
+It checks what's missing and prints the `apt`/`dnf` command for it if so (it never runs
+`sudo` itself). Once it's done, you can delete the folder.
+
+### After any of these
+
+**Log out and back in once.** GNOME only notices a newly installed extension at log-in; a
+notification tells you if this is needed. After that, double-tap right Shift in a text field.
+
+**Updating:** install the newer `.deb`, `.rpm` or tarball the same way (re-run `install.sh`
+for the tarball).
+
+Don't mix a package with `install.sh` on the same machine: the home-folder copy from
+`install.sh` wins over the package's.
 
 ### From source
 
-Clone the repo wherever you like, then run `./install.sh`. It checks what's missing, lists what it
-needs sudo for, and asks once before doing it (say no and it prints the commands instead). The
-service then runs from the cloned folder, so keep it where it is (or re-run `./install.sh` after
-moving it). Don't also install the `.deb`: the clone's service takes precedence over it.
-
-To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_picker` from the repo
-(Ctrl+C to stop).
+Clone the repo, then run `./install.sh`. It copies the code into your home folder, so re-run
+it after you change anything. To try your changes without installing, point `install.sh` at
+the clone first: the extension has to be installed for the double-tap to work at all, there's
+no way to run the picker standalone.
 
 ## Use
 
@@ -59,89 +78,70 @@ To try it without installing, run `PYTHONPATH=src /usr/bin/python3 -m emoji_pick
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
 | Click ✋ (next to the search box) | Choose a skin tone. It applies to every emoji that has tones, except "Recently used", which keeps the tone you picked each one in. It's remembered. |
 | Click **Clear** (on the "Recently used" heading) | Empty the recently used list. It fills up again as you pick. |
-| Run `emoji-picker` again (`PYTHONPATH=src python3 -m emoji_picker` from a source checkout) | Toggles the picker (open if closed, close if open) |
+| Run `emoji-picker` again | Toggles the picker (open if closed, close if open) |
 
 ## Configuration
 
 Optional `~/.config/emoji-picker/config.toml`:
 
 ```toml
-double_tap_ms = 300       # max gap between taps
-restore_clipboard = true  # set false to leave the emoji on the clipboard
-restore_delay_ms = 300    # restore after this if no app reads the emoji
-release_after_read_ms = 50  # restore this long after the app reads the emoji
-paste_delay_ms = 80       # wait for focus to return before pasting
+double_tap_ms = 300   # max gap between the right-Shift taps (50-2000)
 ```
 
 Changes apply a moment after you save; no restart needed. If a value is invalid, the picker
 keeps the previous setting and logs a warning (`journalctl --user -u emoji-picker -f`).
 
-## Uninstall
+An old config file from 0.2 may still have `restore_clipboard`, `restore_delay_ms`,
+`paste_delay_ms` or `release_after_read_ms`: those were clipboard settings and no longer do
+anything. The picker logs "unknown config key" for each and otherwise works fine.
 
-**Installed from the `.deb`:** open the .deb you installed from in App Center again and click
-**Uninstall** (Emoji Picker doesn't appear in App Center's search or installed list), or
-`sudo apt remove emoji-picker`. If you no longer have the file, the apt command works (or download
-it again). Your recents and config stay in your home folder; see [UNINSTALL.md](UNINSTALL.md) to
-delete them.
+## Apps it can't type into
 
-**Installed from source:**
-
-```bash
-./uninstall.sh           # remove the service, keep recents, config and keyboard access
-./uninstall.sh --purge   # also delete recents and config, and offer to remove the udev rule
-```
-
-[UNINSTALL.md](UNINSTALL.md) lists everything the picker adds to your machine.
+- **Qt apps** (e.g. Konsole) **and X11 apps.** The double-tap does nothing there: GNOME's
+  extensions can only type into apps using GNOME's own input method, which Qt and X11 apps
+  don't use.
+- **Pages that drop keyboard focus when another window opens** (e.g. DuckDuckGo's search
+  box). The picker is a separate window, so the insert has nowhere to land.
 
 ## Privacy and security
 
-The picker reads every key press so it can spot the right-Shift double-tap. It only checks
-whether each one is right Shift: it never stores, logs or sends your keystrokes, and it has no
-network code.
+The picker doesn't read your keystrokes and never touches the clipboard. The extension
+reacts only to GNOME's own "locate pointer" key (set to right Shift while the picker is
+running) and types only the emoji you click or press Enter on.
 
-For that, the udev rule gives the person logged in at the screen direct access to keyboards and
-to the virtual-keyboard device. That access isn't limited to the picker: any program you run gets
-it too, so a malicious program could read your typing or type for you without needing an admin
-password. Keyboard remappers such as keyd or xremap need the same access. Other user accounts and remote logins don't get it. While the login screen is showing, the access belongs to the login screen's own system account, and the picker doesn't run there. Uninstalling removes the rule; access
-already granted ends when you log out.
+## Uninstall
 
-The `.deb` is unsigned and its install scripts run as root, so only install one you got from
-this project's GitHub releases or from someone you trust.
+See [UNINSTALL.md](UNINSTALL.md) for every file each route installs and how to remove it.
+Short version:
 
-## Known limitations
-
-- **Terminals:** many ignore Shift+Insert, so the paste doesn't land. The emoji is left on the
-  clipboard only briefly, so set `restore_clipboard = false` if you want to paste it by hand.
-- **Pages that drop focus:** some web pages (e.g. DuckDuckGo's search box) lose keyboard focus
-  whenever the window does, so the paste has nowhere to go.
-- **Only text is restored:** if your clipboard held an image or files, it may hold the emoji
-  afterwards instead.
+- `.deb`: `sudo apt remove emoji-picker`
+- `.rpm`: `sudo dnf remove emoji-picker`
+- tarball / source: `~/.local/share/emoji-picker/uninstall.sh` (add `--purge` to also delete
+  your recents, skin tone and config)
 
 ## Troubleshooting
 
-- Logs: `journalctl --user -u emoji-picker -f`
-- Nothing happens on double-tap: check the logs for a permissions message. Log out and back in,
-  or reboot, so keyboard access applies. From source, re-run `./install.sh`, which checks it.
-- An app pastes your old text instead of the emoji: it read the clipboard late. Raise
-  `release_after_read_ms` (e.g. to 200).
-- The emoji didn't paste into some app: nothing read it, so it stays on the
-  clipboard for `restore_delay_ms` (default 300 ms) after being sent. Set `restore_clipboard = false` if that
-  app needs a manual paste.
-- App Center shows an error when opening the .deb: close App Center and open the file again.
-- Picker never appears / very slow first open: check `fc-match "Noto Color Emoji" file`. If it
-  points at a vector `NotoColorEmoji-Regular.ttf` instead of Ubuntu's bitmap `NotoColorEmoji.ttf`,
-  that font's first layout can block the GTK main loop for minutes. The picker hides the
-  upstream vector font for itself only (`src/emoji_picker/fonts.py`); nothing system-wide changes.
-- A new emoji takes a moment to appear the first time, in any app: that same vector font is slow
-  for every app, not just the picker. If `fc-match` points at it, removing it (e.g. from
-  `/usr/local/share/fonts`, then `fc-cache -f`) makes apps use the fast bitmap font.
+- **Double-tap does nothing:**
+  `gnome-extensions info emoji-picker@mathewdbutton.github.io` should say `State: ACTIVE`. If
+  it doesn't, log out and back in, or switch it on by hand in the Extensions app.
+- **Logs:**
+  ```bash
+  journalctl --user -u emoji-picker -f                                  # the app
+  journalctl -f -o cat /usr/bin/gnome-shell | grep emoji-picker         # the extension
+  ```
+- **A new emoji takes a moment to appear the first time, in any app:** a hand-installed
+  vector (COLRv1) Noto Color Emoji font is slow to draw each emoji the first time, for every
+  app, not just the picker. Check `fc-match "Noto Color Emoji" file`: if it points at a
+  `NotoColorEmoji-Regular.ttf` rather than a bitmap `NotoColorEmoji.ttf`, removing the vector
+  one (e.g. from `/usr/local/share/fonts`, then `fc-cache -f`) fixes it for every app. The
+  picker already hides that font for itself only, so its own picks are never slow.
 
 ## Development
 
 ```bash
 uv venv --system-site-packages --python /usr/bin/python3 && uv sync
-uv run pytest && uv run ruff check
-packaging/build-deb.sh                      # build dist/emoji-picker_<version>_all.deb from HEAD
-.venv/bin/python -m emoji_picker.window   # preview the window without pasting
+uv run pytest -q && uv run ruff check
+packaging/build.sh                        # builds the .deb, .rpm and .tar.gz from HEAD into dist/
+.venv/bin/python -m emoji_picker.window   # preview the window; doesn't insert (steals focus!)
 /usr/bin/python3 tools/build_emoji_data.py  # regenerate emoji.json (network)
 ```
