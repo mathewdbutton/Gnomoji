@@ -1,6 +1,0 @@
-# Let the person logged in at the screen (not other users, not remote logins) read keyboards
-# and create virtual keyboards. The emoji picker watches for the right-Shift double-tap and
-# uses a virtual keyboard to send the paste keystroke. systemd-logind applies the "uaccess"
-# tag as a per-user ACL, so no group membership or log-out is needed.
-SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_KEYBOARD}=="1", TAG+="uaccess"
-KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"

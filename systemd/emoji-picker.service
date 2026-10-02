@@ -1,4 +1,5 @@
-# Template: install.sh replaces @SRC@ with the repo's src/ directory.
+# Template: @APPDIR@ is the folder holding the emoji_picker package (install.sh and
+# packaging/build.sh fill it in).
 [Unit]
 Description=Emoji picker (double-tap right Shift)
 PartOf=graphical-session.target
@@ -8,11 +9,10 @@ StartLimitIntervalSec=60
 StartLimitBurst=3
 
 [Service]
-Environment=PYTHONPATH=@SRC@
+Environment="PYTHONPATH=@APPDIR@"
 ExecStart=/usr/bin/python3 -m emoji_picker
 Restart=on-failure
 RestartSec=2
-RestartPreventExitStatus=78
 
 [Install]
 WantedBy=graphical-session.target
