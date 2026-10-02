@@ -24,16 +24,14 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib
 
 from . import config as config_module
-from .clipboard import ClipboardKeeper
+from . import extension_setup
 from .emoji_data import EmojiData, Recents, SkinTone
-from .flow import PasteFlow
-from .injector import Injector
-from .trigger import DoubleTapDetector, KeyboardWatcher, check_access
-from .welcome import Welcome
+from .flow import PickerFlow
+from .shell import ShellLink
+from .welcome import Welcome, message
 from .window import PickerWindow
 
 APP_ID = "local.emojipicker.EmojiPicker"
-EXIT_SETUP_ERROR = 78  # EX_CONFIG: systemd unit is told not to restart on this
 
 log = logging.getLogger("emoji_picker")
 
@@ -46,15 +44,15 @@ def _schedule(ms: int, fn) -> None:
     GLib.timeout_add(ms, once)
 
 
-def _notifications(connection: Gio.DBusConnection):
+def _notifications(connection: Gio.DBusConnection, title: str, body: str):
     """Send (and later withdraw) the welcome straight to GNOME's notification service,
     not through Gio.Application.send_notification, which drops errors: we need to see
     InvalidApp to retry while GNOME hasn't noticed our new desktop file yet."""
 
     def send(on_result) -> None:
         params = GLib.Variant("(ssa{sv})", (APP_ID, "welcome", {
-            "title": GLib.Variant("s", "Emoji Picker is ready"),
-            "body": GLib.Variant("s", "Double-tap right Shift to open it."),
+            "title": GLib.Variant("s", title),
+            "body": GLib.Variant("s", body),
             "icon": Gio.ThemedIcon.new(APP_ID).serialize(),
         }))
 
@@ -81,30 +79,11 @@ def _call(connection: Gio.DBusConnection, method: str, params: GLib.Variant, don
     )
 
 
-def _exit_on_watcher_crash() -> None:
-    """Called from the watcher thread once it has died (trigger.KeyboardWatcher.run
-    already logged the traceback). The double-tap trigger is the only way into the
-    app, so a dead watcher must take the whole process down rather than leave a
-    silently-broken service running.
-
-    We marshal onto the GTK main loop with GLib.idle_add (required even though
-    os._exit is thread-safe, to satisfy the "marshal to the main loop" contract and
-    keep all GLib-adjacent calls on one thread), then call os._exit(1) there. We
-    pick os._exit over quitting the Adw.Application and returning a stored failure
-    code from main(): Gio.Application.run() always returns 0 after quit(), so that
-    route needs an extra mutable flag threaded back out of the class; os._exit(1)
-    gets a guaranteed non-zero (and non-78, so systemd's Restart=on-failure fires)
-    exit status in one line, and there is no cleanup worth doing once we know the
-    trigger is dead.
-    """
-    GLib.idle_add(lambda: os._exit(1))
-
-
 class EmojiPickerApp(Adw.Application):
-    def __init__(self, config: config_module.Config, data: EmojiData, injector: Injector):
+    def __init__(self, config: config_module.Config, data: EmojiData):
         super().__init__(application_id=APP_ID)
-        self._config, self._data, self._injector = config, data, injector
-        self._flow: PasteFlow | None = None
+        self._config, self._data = config, data
+        self._flow: PickerFlow | None = None
         self._activated = False
 
     def do_startup(self) -> None:
@@ -112,29 +91,30 @@ class EmojiPickerApp(Adw.Application):
         self.hold()  # stay alive with no visible window
         recents = Recents()
         window = PickerWindow(
-            self,
-            self._data,
-            recents,
-            SkinTone(),
-            on_pick=lambda emoji: self._flow.pick(emoji),
-            on_focused=lambda: self._flow.on_focused(),
+            self, self._data, recents, SkinTone(), on_pick=lambda emoji: self._flow.pick(emoji)
         )
-        self._flow = PasteFlow(
-            window, ClipboardKeeper(window.get_clipboard()), self._injector, recents,
-            self._config, _schedule,
-        )
-        self._detector = DoubleTapDetector(self._config.double_tap_ms)
-        KeyboardWatcher(
-            self._detector,
-            on_double_tap=lambda: GLib.idle_add(self._toggle_from_key),
-            ignore_names={Injector.NAME},
-            on_crash=_exit_on_watcher_crash,
-        ).start()
+        connection = self.get_dbus_connection()
+        self._shell = ShellLink(connection)
+        self._flow = PickerFlow(window, self._shell, recents)
+        self._shell.on_double_tap(self._flow.toggle)
+        # The extension (re)loaded after us: send it the settings again.
+        self._shell.on_ready(lambda: self._shell.configure(self._config.double_tap_ms))
+        self._shell.configure(self._config.double_tap_ms)
         self._watch_config()
-        log.info("Ready: double-tap right Shift to open the picker")
-        if (connection := self.get_dbus_connection()) is not None:
-            send, withdraw = _notifications(connection)
+        self._first_start(connection)
+        log.info("Ready: double-tap right Shift in a text field to open the picker")
+
+    def _first_start(self, connection: Gio.DBusConnection) -> None:
+        """Switch the extension on the first time this person runs us, then say whether
+        it's ready or needs one log-out (GNOME only notices new extensions at log-in)."""
+        if not extension_setup.enable_once(extension_setup.shell_settings()):
+            return
+
+        def welcome(active: bool) -> None:
+            send, withdraw = _notifications(connection, *message(active))
             Welcome(send, withdraw, _schedule).start()
+
+        self._shell.extension_active(welcome)
 
     def _watch_config(self) -> None:
         """Apply config.toml edits live. GLib's monitor also reports a file (or folder)
@@ -153,12 +133,7 @@ class EmojiPickerApp(Adw.Application):
 
     def _apply_config(self, config: config_module.Config) -> None:
         self._config = config
-        self._flow.set_config(config)
-        self._detector.set_interval(config.double_tap_ms)
-
-    def _toggle_from_key(self) -> bool:
-        self._flow.toggle()
-        return GLib.SOURCE_REMOVE
+        self._shell.configure(config.double_tap_ms)
 
     def do_activate(self) -> None:
         # The first activation is the service starting, so stay hidden. Later ones come
@@ -170,14 +145,7 @@ class EmojiPickerApp(Adw.Application):
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    try:
-        check_access()
-        injector = Injector()
-    except PermissionError as e:
-        log.error("%s", e)
-        return EXIT_SETUP_ERROR
-    data = EmojiData.load()
-    return EmojiPickerApp(config_module.load(), data, injector).run(sys.argv[:1])
+    return EmojiPickerApp(config_module.load(), EmojiData.load()).run(sys.argv[:1])
 
 
 if __name__ == "__main__":

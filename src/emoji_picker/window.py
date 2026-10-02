@@ -61,14 +61,13 @@ class PickerWindow(Adw.ApplicationWindow):
         recents: Recents,
         skin_tone: SkinTone,
         on_pick: Callable[[Emoji], None],
-        on_focused: Callable[[], None],
     ):
         super().__init__(application=application, title="Emoji Picker")
         self.set_default_size(380, 420)
         self.set_resizable(False)
         self.set_hide_on_close(True)
         self._data, self._recents, self._skin_tone = data, recents, skin_tone
-        self._on_pick, self._on_focused = on_pick, on_focused
+        self._on_pick = on_pick
         self._was_active = False
         self._pressed = False  # a mouse button is down inside the picker (maybe a drag)
         self._selection = Selection([], COLUMNS)
@@ -227,7 +226,7 @@ class PickerWindow(Adw.ApplicationWindow):
             box.get_child_at_index(i).set_can_focus(False)
         self._emojis_of[box] = emojis
 
-    # --- public API used by PasteFlow -----------------------------------------
+    # --- public API used by PickerFlow -----------------------------------------
 
     def show_picker(self) -> None:
         self._entry.set_text("")
@@ -443,9 +442,7 @@ class PickerWindow(Adw.ApplicationWindow):
         )
         if self.is_active():
             self._pressed = False
-            if not self._was_active:
-                self._was_active = True
-                self._on_focused()
+            self._was_active = True
         elif self._pressed:
             log.info("Picker lost focus mid-press: a drag, staying open")
         elif self._was_active and self.get_visible():
@@ -454,7 +451,7 @@ class PickerWindow(Adw.ApplicationWindow):
 
 
 if __name__ == "__main__":
-    # Manual preview: python -m emoji_picker.window. Prints picks and doesn't paste.
+    # Manual preview: python -m emoji_picker.window. Prints picks and doesn't insert.
     import sys
 
     def _activate(app: Adw.Application) -> None:
@@ -464,7 +461,6 @@ if __name__ == "__main__":
             Recents(),
             SkinTone(),
             on_pick=lambda e: print("picked", e.char, e.name, flush=True),
-            on_focused=lambda: print("focused", flush=True),
         )
         window.show_picker()
 
