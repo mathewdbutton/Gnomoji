@@ -1,0 +1,21 @@
+#!/bin/sh
+# Run as root by the .deb's postinst and the .rpm's %post, after install and upgrade.
+# Turns the picker's user service on for every account and starts it (on upgrade: swaps in
+# the new version) in every running desktop session. Best-effort: never fails the install.
+
+systemctl --global enable emoji-picker.service \
+    || echo "emoji-picker: couldn't enable it for all users. Each user can run: systemctl --user enable --now emoji-picker"
+
+# Only users with an active graphical session (lingering/SSH-only users have a user
+# manager but no session).
+loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do
+    systemctl --quiet is-active "user@$uid.service" 2>/dev/null || continue
+    systemctl --user --machine="$user@.host" --quiet is-active graphical-session.target 2>/dev/null \
+        || continue
+    if ! { systemctl --user --machine="$user@.host" daemon-reload \
+           && systemctl --user --machine="$user@.host" restart emoji-picker.service; }; then
+        echo "emoji-picker: couldn't start it for $user; it will start at their next log-in."
+    fi
+done
+
+exit 0

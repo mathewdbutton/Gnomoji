@@ -1,4 +1,4 @@
-"""The package's install/remove scripts, run against fake systemctl, loginctl and udevadm."""
+"""The shared enable/disable scripts run against fake systemctl and loginctl; the .deb and .rpm scriptlets are checked as text."""
 
 import os
 import shutil
@@ -28,181 +28,112 @@ esac
 exit 0
 """
 
-UDEV = [
-    "udevadm control --reload",
-    "udevadm trigger --subsystem-match=input --subsystem-match=misc --action=change",
-]
 ALICE = "systemctl --user --machine=alice@.host"
+SPEC = PACKAGING / "rpm" / "emoji-picker.spec"
 
 
 @pytest.fixture
 def run(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    for name in ("systemctl", "loginctl", "udevadm", "py3compile", "py3clean"):
+    for name in ("systemctl", "loginctl"):
         fake = bin_dir / name
         fake.write_text(FAKE)
         fake.chmod(0o755)
     log = tmp_path / "calls.log"
 
-    def run(script, *args, fail=""):
+    def run(script, fail=""):
         log.write_text("")
-        env = {
-            **os.environ,
-            "PATH": f"{bin_dir}:{os.environ['PATH']}",
-            "FAKE_LOG": str(log),
-            "FAKE_FAIL": fail,
-        }
+        env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+               "FAKE_LOG": str(log), "FAKE_FAIL": fail}
         result = subprocess.run(
-            ["sh", str(PACKAGING / "deb" / script), *args],
-            env=env, capture_output=True, text=True, check=False,
+            ["sh", str(PACKAGING / script)], env=env, capture_output=True, text=True, check=False
         )
         return result, log.read_text().splitlines()
 
     return run
 
 
-# --- postinst -------------------------------------------------------------------------------
-
-
-def test_install_grants_access_enables_and_starts_in_running_sessions(run):
-    result, calls = run("postinst", "configure", "")
+def test_enable_turns_it_on_for_everyone_and_starts_it_in_desktop_sessions(run):
+    result, calls = run("enable-for-everyone")
     assert result.returncode == 0, result.stderr
-    assert calls[:3] == [*UDEV, "udevadm settle --timeout=10"]
     assert "systemctl --global enable emoji-picker.service" in calls
-    assert "py3compile -p emoji-picker" in calls
     reload = calls.index(f"{ALICE} daemon-reload")
     assert calls[reload + 1] == f"{ALICE} restart emoji-picker.service"
-    assert not any("bob@" in call for call in calls)
+    assert not any("bob@" in c or "carol@.host restart" in c for c in calls)
 
 
-def test_install_does_not_restart_a_session_without_a_graphical_target(run):
-    # carol (uid 1002): user manager running, but graphical-session.target not active.
-    result, calls = run("postinst", "configure", "")
+def test_enable_succeeds_when_everything_fails(run):
+    for fail in ("--global enable", "restart", "loginctl"):
+        result, _ = run("enable-for-everyone", fail=fail)
+        assert result.returncode == 0, (fail, result.stderr)
+
+
+def test_enable_never_touches_udev(run):
+    _, calls = run("enable-for-everyone")
+    assert not any(c.startswith("udevadm") for c in calls)
+
+
+def test_disable_stops_it_in_running_sessions_and_turns_it_off(run):
+    result, calls = run("disable-for-everyone")
     assert result.returncode == 0, result.stderr
-    assert "systemctl --user --machine=carol@.host --quiet is-active graphical-session.target" in calls
-    assert not any("carol@.host restart" in call or "carol@.host daemon-reload" in call for call in calls)
-
-
-def test_a_py3compile_failure_does_not_fail_the_install(run):
-    result, calls = run("postinst", "configure", "", fail="py3compile")
-    assert result.returncode == 0, result.stderr
-    assert "systemctl --global enable emoji-picker.service" in calls
-
-
-def test_upgrade_restarts_with_the_new_version(run):
-    result, calls = run("postinst", "configure", "0.1.0")
-    assert result.returncode == 0, result.stderr
-    assert f"{ALICE} restart emoji-picker.service" in calls
-
-
-def test_install_succeeds_when_a_session_refuses(run):
-    result, _ = run("postinst", "configure", "", fail="restart")
-    assert result.returncode == 0, result.stderr
-    assert "alice" in result.stdout
-    assert "next log-in" in result.stdout
-
-
-def test_install_succeeds_without_any_sessions(run):
-    result, calls = run("postinst", "configure", "", fail="loginctl")
-    assert result.returncode == 0, result.stderr
-    assert "systemctl --global enable emoji-picker.service" in calls
-    assert not any("restart" in call for call in calls)
-
-
-def test_install_succeeds_when_enabling_for_everyone_fails(run):
-    result, calls = run("postinst", "configure", "", fail="--global enable")
-    assert result.returncode == 0, result.stderr
-    assert f"{ALICE} restart emoji-picker.service" in calls
-
-
-def test_install_succeeds_when_udev_fails(run):
-    result, calls = run("postinst", "configure", "", fail="udevadm")
-    assert result.returncode == 0, result.stderr
-    assert "systemctl --global enable emoji-picker.service" in calls
-
-
-@pytest.mark.parametrize("action", ["abort-upgrade", "abort-remove"])
-def test_postinst_ignores_other_actions(run, action):
-    result, calls = run("postinst", action, "0.1.0")
-    assert result.returncode == 0, result.stderr
-    assert calls == []
-
-
-# --- prerm ----------------------------------------------------------------------------------
-
-
-def test_remove_stops_in_running_sessions_and_disables(run):
-    result, calls = run("prerm", "remove")
-    assert result.returncode == 0, result.stderr
-    assert "py3clean -p emoji-picker" in calls
     assert f"{ALICE} stop emoji-picker.service" in calls
-    assert calls[-1] == "systemctl --global disable emoji-picker.service"
-    assert not any("bob@" in call for call in calls)
-
-
-def test_remove_succeeds_when_stopping_fails(run):
-    result, calls = run("prerm", "remove", fail="stop")
-    assert result.returncode == 0, result.stderr
-    assert "alice" in result.stdout
     assert "systemctl --global disable emoji-picker.service" in calls
 
 
-def test_remove_succeeds_when_disabling_fails(run):
-    result, calls = run("prerm", "remove", fail="--global disable")
-    assert result.returncode == 0, result.stderr
-    assert "all users" in result.stdout
-    assert f"{ALICE} stop emoji-picker.service" in calls
+def test_disable_succeeds_when_everything_fails(run):
+    for fail in ("stop", "--global disable"):
+        result, _ = run("disable-for-everyone", fail=fail)
+        assert result.returncode == 0, (fail, result.stderr)
 
 
-def test_upgrade_leaves_the_running_picker_alone(run):
-    result, calls = run("prerm", "upgrade", "0.2.0")
-    assert result.returncode == 0, result.stderr
-    assert calls == ["py3clean -p emoji-picker"]
-    assert not any("stop" in call or "disable" in call for call in calls)
+def test_deb_postinst_compiles_then_enables_on_configure_only():
+    text = (PACKAGING / "deb" / "postinst").read_text()
+    assert 'if [ "$1" = configure ]; then' in text
+    assert text.index("py3compile /usr/lib/emoji-picker") < text.index(
+        "sh /usr/lib/emoji-picker/enable-for-everyone"
+    )
 
 
-# --- postrm ---------------------------------------------------------------------------------
+def test_deb_prerm_cleans_bytecode_and_disables_only_on_remove():
+    text = (PACKAGING / "deb" / "prerm").read_text()
+    assert "remove|upgrade) py3clean /usr/lib/emoji-picker" in text
+    assert 'if [ "$1" = remove ]; then' in text
+    assert "sh /usr/lib/emoji-picker/disable-for-everyone" in text
 
 
-@pytest.mark.parametrize("action", ["remove", "purge"])
-def test_removal_reloads_udev(run, action):
-    result, calls = run("postrm", action)
-    assert result.returncode == 0, result.stderr
-    assert calls == UDEV
+def test_rpm_scriptlets_use_the_same_scripts():
+    text = SPEC.read_text()
+    post = text.split("%post", 1)[1].split("%preun", 1)[0]
+    preun = text.split("%preun", 1)[1].split("%files", 1)[0]
+    assert "python3 -m compileall -q /usr/lib/emoji-picker" in post
+    assert "sh /usr/lib/emoji-picker/enable-for-everyone" in post
+    assert 'if [ "$1" -eq 0 ]; then' in preun
+    assert "sh /usr/lib/emoji-picker/disable-for-everyone" in preun
+    assert "__pycache__" in preun
 
 
-def test_removal_succeeds_when_udev_fails(run):
-    result, _ = run("postrm", "remove", fail="udevadm")
-    assert result.returncode == 0, result.stderr
+def test_no_udev_anywhere_in_packaging():
+    # The smoke tests (Task 9) mention udev only to check that no rule gets installed.
+    for path in PACKAGING.rglob("*"):
+        if path.is_file() and not path.name.startswith("smoke-test"):
+            assert "udev" not in path.read_text(), path
 
 
-def test_postrm_upgrade_does_nothing(run):
-    result, calls = run("postrm", "upgrade", "0.2.0")
-    assert result.returncode == 0, result.stderr
-    assert calls == []
-
-
-# --- all packaging scripts ------------------------------------------------------------------
-
-
-def test_launcher_runs_the_installed_package():
+def test_launcher_template_runs_the_package():
     text = (PACKAGING / "emoji-picker").read_text()
+    assert 'export PYTHONPATH="@APPDIR@"' in text
     assert 'exec /usr/bin/python3 -m emoji_picker "$@"' in text
 
 
 def test_scripts_are_executable():
-    for script in (PACKAGING / "emoji-picker", *(PACKAGING / "deb").glob("post*"),
-                   PACKAGING / "deb" / "prerm"):
-        assert os.access(script, os.X_OK), script
+    for rel in ("enable-for-everyone", "disable-for-everyone", "deb/postinst", "deb/prerm",
+                "emoji-picker", "build.sh"):
+        assert (PACKAGING / rel).stat().st_mode & 0o111, rel
 
 
-@pytest.mark.skipif(not shutil.which("shellcheck"), reason="shellcheck not installed")
+@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
 def test_scripts_pass_shellcheck():
-    scripts = sorted(
-        p for p in PACKAGING.rglob("*") if p.is_file() and p.name != "control"
-    )
-    result = subprocess.run(
-        ["shellcheck", *map(str, scripts)], capture_output=True, text=True, check=False,
-    )
-    assert result.returncode == 0, result.stdout
+    scripts = ["enable-for-everyone", "disable-for-everyone", "deb/postinst", "deb/prerm",
+               "emoji-picker", "build.sh"]
+    subprocess.run(["shellcheck", *(str(PACKAGING / s) for s in scripts)], check=True)

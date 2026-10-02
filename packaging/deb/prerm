@@ -1,21 +1,15 @@
 #!/bin/sh
 # Runs as root before the package's files are removed. On upgrade it only cleans bytecode:
-# postinst restarts the picker with the new version instead, so nothing here stops or disables it.
+# the new postinst restarts the picker, so nothing here stops or disables it then.
 set -e
 
-# A root-owned __pycache__ must never block removal, on remove or on upgrade.
+# A root-owned __pycache__ must never block removal.
 case "$1" in
-    remove|upgrade) py3clean -p emoji-picker || true ;;
+    remove|upgrade) py3clean /usr/lib/emoji-picker || true ;;
 esac
 
 if [ "$1" = remove ]; then
-    loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do
-        systemctl --quiet is-active "user@$uid.service" 2>/dev/null || continue
-        systemctl --user --machine="$user@.host" stop emoji-picker.service \
-            || echo "emoji-picker: couldn't stop it for $user; it stops when they log out."
-    done
-    systemctl --global disable emoji-picker.service \
-        || echo "emoji-picker: couldn't disable it for all users."
+    sh /usr/lib/emoji-picker/disable-for-everyone || true
 fi
 
 exit 0

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Run as root by the .deb's prerm and the .rpm's %preun, on removal only (not upgrade).
+# Stops the picker in running sessions and turns its user service off for everyone.
+# Best-effort: never fails the removal.
+
+loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do
+    systemctl --quiet is-active "user@$uid.service" 2>/dev/null || continue
+    systemctl --user --machine="$user@.host" stop emoji-picker.service \
+        || echo "emoji-picker: couldn't stop it for $user; it stops when they log out."
+done
+systemctl --global disable emoji-picker.service \
+    || echo "emoji-picker: couldn't disable it for all users."
+
+exit 0
