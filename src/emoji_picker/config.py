@@ -16,11 +16,7 @@ DEFAULT_PATH = (
 
 @dataclass(frozen=True)
 class Config:
-    double_tap_ms: int = 300
-    restore_clipboard: bool = True
-    restore_delay_ms: int = 300
-    paste_delay_ms: int = 80
-    release_after_read_ms: int = 50
+    double_tap_ms: int = 300  # max gap between the right-Shift taps; sent to the extension
 
 
 def load(path: Path = DEFAULT_PATH, fallback: Config | None = None) -> Config:
@@ -44,7 +40,7 @@ def load(path: Path = DEFAULT_PATH, fallback: Config | None = None) -> Config:
     for name, f in known.items():
         if name not in raw:
             continue
-        if _valid(f.type, raw[name], MIN_INT.get(name, 0)):
+        if _valid(f.type, raw[name], MIN_INT.get(name, 0), MAX_INT.get(name)):
             values[name] = raw[name]
         else:
             kept = getattr(previous, name)
@@ -94,12 +90,16 @@ class Reloader:
             log.exception("Applying the reloaded config failed")
 
 
-# double_tap_ms must be positive or every tap is rejected (held > 0 in DoubleTapDetector);
-# the other int fields are delays, which are meaningful at 0.
+# Below 50 ms a human double-tap can't register at all. Above 2000 ms it's not a
+# double-tap any more, and huge values (a typo with an extra digit) overflow the
+# D-Bus u32 sent to the extension.
 MIN_INT = {"double_tap_ms": 50}
+MAX_INT = {"double_tap_ms": 2000}
 
 
-def _valid(expected: type, value: object, minimum: int = 0) -> bool:
+def _valid(expected: type, value: object, minimum: int = 0, maximum: int | None = None) -> bool:
     if expected is bool:
         return isinstance(value, bool)
-    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum
+    if not (isinstance(value, int) and not isinstance(value, bool) and value >= minimum):
+        return False
+    return maximum is None or value <= maximum
