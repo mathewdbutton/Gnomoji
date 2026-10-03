@@ -18,6 +18,13 @@ BASH = shutil.which("bash") or "/usr/bin/bash"
 # the script makes of it; everything else just logs its call and exits 0.
 ALL_TOOLS = ("gjs", "git", "dpkg-deb", "rpmbuild", "rpm", "shellcheck", "fc-list", "fc-match",
              "apt-get", "sudo", "uv")
+
+# The genuinely-needed real utilities dev-setup.sh calls beyond ALL_TOOLS and bash's own
+# builtins: basename/dirname (HERE, and every fake tool's own "$(basename "$0")" logging),
+# grep (has_font's "| grep -q ."), and id (the root check). PATH below is *only* this plus
+# bin_dir, never a real system directory, so a "missing" tool stays missing no matter what's
+# actually installed on the machine running the tests (e.g. shellcheck, which is real here).
+REAL_TOOLS = ("basename", "dirname", "grep", "id")
 FAKE = r"""#!/bin/sh
 echo "$(basename "$0") $*" >> "$FAKE_LOG"
 case "$(basename "$0") $*" in
@@ -41,7 +48,20 @@ def bin_dir(tmp_path):
 
 
 @pytest.fixture
-def run(tmp_path, bin_dir):
+def real_bin_dir(tmp_path):
+    # Symlinks to just REAL_TOOLS, so PATH can skip /usr/bin and /bin entirely: nothing on
+    # the real machine other than these four utilities is ever reachable by dev-setup.sh.
+    real_bin_dir = tmp_path / "real-bin"
+    real_bin_dir.mkdir()
+    for name in REAL_TOOLS:
+        target = shutil.which(name)
+        assert target, f"{name} not found on this machine (needed to isolate the tests)"
+        (real_bin_dir / name).symlink_to(target)
+    return real_bin_dir
+
+
+@pytest.fixture
+def run(tmp_path, bin_dir, real_bin_dir):
     log = tmp_path / "calls.log"
 
     def run(missing=(), overrides=None):
@@ -53,7 +73,7 @@ def run(tmp_path, bin_dir):
             fake.chmod(0o755)
         log.write_text("")
         env = {
-            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "PATH": f"{bin_dir}:{real_bin_dir}",
             "HOME": str(tmp_path / "home"),
             "FAKE_LOG": str(log),
         }
@@ -100,6 +120,9 @@ def test_dev_setup_prints_the_install_command_and_exits_without_a_terminal(run):
     assert "sudo apt-get install -y" in output
     assert "shellcheck" in output
     assert not any(c.startswith(("apt-get", "sudo")) for c in calls)
+    # Only the friendly message, never bash's own "/dev/tty: No such device or address" from
+    # the failing `read` (that happens when the redirect isn't guarded before the read).
+    assert "No such device" not in output
 
 
 def test_dev_setup_only_lists_the_missing_packages(run):
