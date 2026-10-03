@@ -11,11 +11,11 @@ REPO="$(git rev-parse --show-toplevel)"
 OUT="${1:-$REPO/dist}"
 APP_ID=local.emojipicker.EmojiPicker
 UUID=emoji-picker@mathewdbutton.github.io
-APP=/usr/lib/emoji-picker
+APP=/usr/lib/gnomoji
 umask 022
 
 # Not under $TMPDIR: the rpmbuild --define values below split on spaces.
-work="$(mktemp -d /tmp/emoji-picker-build.XXXXXX)"
+work="$(mktemp -d /tmp/gnomoji-build.XXXXXX)"
 trap 'rm -rf "$work"' EXIT
 src="$work/src"
 root="$work/root"
@@ -36,15 +36,15 @@ install -d "$root$APP" "$root/usr/bin" "$root/usr/lib/systemd/user" "$root/usr/s
 cp -r "$src/src/emoji_picker" "$root$APP/"
 install -m 755 "$HERE/enable-for-everyone" "$HERE/disable-for-everyone" "$root$APP/"
 cp "$src"/extension/*.js "$src/extension/metadata.json" "$root/usr/share/gnome-shell/extensions/$UUID/"
-fill "$HERE/emoji-picker" "$root/usr/bin/emoji-picker"
-fill "$src/systemd/emoji-picker.service" "$root/usr/lib/systemd/user/emoji-picker.service"
+fill "$HERE/gnomoji" "$root/usr/bin/gnomoji"
+fill "$src/systemd/gnomoji.service" "$root/usr/lib/systemd/user/gnomoji.service"
 fill "$src/desktop/$APP_ID.desktop" "$root/usr/share/applications/$APP_ID.desktop"
 install -D -m 644 "$src/desktop/$APP_ID.svg" "$root/usr/share/icons/hicolor/scalable/apps/$APP_ID.svg"
 
-doc="$root/usr/share/doc/emoji-picker"
+doc="$root/usr/share/doc/gnomoji"
 install -d "$doc"
 {
-    echo "emoji-picker: https://github.com/mathewdbutton/emoji-picker"
+    echo "Gnomoji: https://github.com/mathewdbutton/emoji-picker"
     echo
     echo "The icon is the pinching hand emoji from Noto Emoji, Copyright Google LLC, under the"
     echo "Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)."
@@ -59,21 +59,21 @@ install -d "$doc"
 # Normalise modes: the user's umask or the source files mustn't decide them.
 find "$root" -type d -exec chmod 755 {} +
 find "$root" -type f -exec chmod 644 {} +
-chmod 755 "$root/usr/bin/emoji-picker" "$root$APP/enable-for-everyone" "$root$APP/disable-for-everyone"
+chmod 755 "$root/usr/bin/gnomoji" "$root$APP/enable-for-everyone" "$root$APP/disable-for-everyone"
 
 # --- .deb -------------------------------------------------------------------------------
 deb_root="$work/deb"
 cp -a "$root" "$deb_root"
-printf 'emoji-picker (%s) unstable; urgency=medium\n\n  * Release %s: https://github.com/mathewdbutton/emoji-picker/releases\n\n -- %s  %s\n' \
+printf 'gnomoji (%s) unstable; urgency=medium\n\n  * Release %s: https://github.com/mathewdbutton/emoji-picker/releases\n\n -- %s  %s\n' \
     "$version" "$version" "$maintainer" "$(git -C "$REPO" log -1 --format=%cD)" \
-    | gzip -9n > "$deb_root/usr/share/doc/emoji-picker/changelog.gz"
-chmod 644 "$deb_root/usr/share/doc/emoji-picker/changelog.gz"
+    | gzip -9n > "$deb_root/usr/share/doc/gnomoji/changelog.gz"
+chmod 644 "$deb_root/usr/share/doc/gnomoji/changelog.gz"
 install -d "$deb_root/DEBIAN"
 sed -e "s/@VERSION@/$version/" -e "s/@INSTALLED_SIZE@/$(du -sk "$deb_root/usr" | cut -f1)/" \
     "$HERE/deb/control" > "$deb_root/DEBIAN/control"
 chmod 644 "$deb_root/DEBIAN/control"
 install -m 755 "$HERE/deb/postinst" "$HERE/deb/prerm" "$deb_root/DEBIAN/"
-deb="$OUT/emoji-picker_${version}_all.deb"
+deb="$OUT/gnomoji_${version}_all.deb"
 dpkg-deb --root-owner-group -Zxz --build "$deb_root" "$deb" >/dev/null
 echo "$deb"
 
@@ -81,14 +81,14 @@ echo "$deb"
 if command -v rpmbuild >/dev/null; then
     rpmbuild --quiet -bb --define "_topdir $work/rpm" --define "stage $root" \
         --define "pkgversion $version" "$HERE/rpm/emoji-picker.spec" >/dev/null
-    rpm="$OUT/emoji-picker-${version}-1.noarch.rpm"
-    cp "$work/rpm/RPMS/noarch/emoji-picker-${version}-1.noarch.rpm" "$rpm"
+    rpm="$OUT/gnomoji-${version}-1.noarch.rpm"
+    cp "$work/rpm/RPMS/noarch/gnomoji-${version}-1.noarch.rpm" "$rpm"
     echo "$rpm"
 else
     echo "build.sh: rpmbuild not found, skipping the .rpm (Ubuntu: sudo apt install rpm)" >&2
 fi
 
 # --- tarball ------------------------------------------------------------------------------
-tarball="$OUT/emoji-picker-${version}.tar.gz"
-git -C "$REPO" archive --format=tar.gz --prefix="emoji-picker-${version}/" -o "$tarball" HEAD
+tarball="$OUT/gnomoji-${version}.tar.gz"
+git -C "$REPO" archive --format=tar.gz --prefix="gnomoji-${version}/" -o "$tarball" HEAD
 echo "$tarball"

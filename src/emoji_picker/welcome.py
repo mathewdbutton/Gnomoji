@@ -14,8 +14,8 @@ TRIES = 30
 # not so soon that someone who looked away misses it.
 KEEP_MS = 60_000
 
-READY = ("Emoji Picker is ready", "Double-tap right Shift in a text field to open it.")
-LOG_OUT = ("Emoji Picker is installed", "Log out and back in once to finish setting it up.")
+READY = ("Gnomoji is ready", "Double-tap right Shift in a text field to open it.")
+LOG_OUT = ("Gnomoji is installed", "Log out and back in once to finish setting it up.")
 
 
 def message(active: bool) -> tuple[str, str]:

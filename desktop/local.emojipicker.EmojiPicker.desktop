@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Emoji Picker
+Name=Gnomoji
 Comment=Double-tap right Shift to pick an emoji
 Icon=local.emojipicker.EmojiPicker
 Exec=env "PYTHONPATH=@APPDIR@" /usr/bin/python3 -m emoji_picker

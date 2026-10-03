@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Install Emoji Picker for you, with no sudo: copies its GNOME Shell extension and the app
+# Install Gnomoji for you, with no sudo: copies its GNOME Shell extension and the app
 # into your home folder and starts the app as a systemd user service. This folder can be
-# deleted afterwards. To remove it all: ~/.local/share/emoji-picker/uninstall.sh
+# deleted afterwards. To remove it all: ~/.local/share/gnomoji/uninstall.sh
 set -euo pipefail
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -11,7 +11,7 @@ fi
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
-APP_DIR="$DATA_DIR/emoji-picker"
+APP_DIR="$DATA_DIR/gnomoji"
 UUID=emoji-picker@mathewdbutton.github.io
 EXT_DIR="$DATA_DIR/gnome-shell/extensions/$UUID"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
@@ -82,27 +82,27 @@ fill() {  # fill TEMPLATE DEST: put the app folder in place of @APPDIR@
     value="${value//&/\\&}"
     sed "s|@APPDIR@|${value//|/\\|}|g" "$1" > "$2"
 }
-fill "$SRC/packaging/emoji-picker" "$BIN_DIR/emoji-picker"
-chmod 755 "$BIN_DIR/emoji-picker"
+fill "$SRC/packaging/gnomoji" "$BIN_DIR/gnomoji"
+chmod 755 "$BIN_DIR/gnomoji"
 fill "$SRC/desktop/$APP_ID.desktop" "$DATA_DIR/applications/$APP_ID.desktop"
 cp "$SRC/desktop/$APP_ID.svg" "$DATA_DIR/icons/hicolor/scalable/apps/"
 # GNOME Shell only rescans icons when the theme's top folder changes, not a subfolder.
 touch "$DATA_DIR/icons/hicolor"
-fill "$SRC/systemd/emoji-picker.service" "$UNIT_DIR/emoji-picker.service"
+fill "$SRC/systemd/gnomoji.service" "$UNIT_DIR/gnomoji.service"
 
 if ! PYTHONPATH="$APP_DIR" PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -m emoji_picker.extension_setup; then
-    printf "! Couldn't switch the extension on. Turn on Emoji Picker in the Extensions app.\n"
+    printf "! Couldn't switch the extension on. Turn on Gnomoji in the Extensions app.\n"
 fi
 systemctl --user daemon-reload
-systemctl --user enable emoji-picker
-systemctl --user restart emoji-picker
+systemctl --user enable gnomoji
+systemctl --user restart gnomoji
 
 echo
 if gnome-extensions info "$UUID" 2>/dev/null | grep -q "State: ACTIVE"; then
     echo "Done! Double-tap right Shift in a text field."
     echo "If this was an update, log out and back in to load the new version."
 else
-    echo "Almost done: log out and back in once to finish setting up Emoji Picker."
+    echo "Almost done: log out and back in once to finish setting up Gnomoji."
     echo "Then double-tap right Shift in a text field."
 fi
 echo "You can delete this folder now. To uninstall: $APP_DIR/uninstall.sh"

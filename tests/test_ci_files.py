@@ -28,7 +28,7 @@ def test_workflow_builds_tests_and_smoke_tests_both_packages():
 
 def test_release_attaches_all_three_files():
     text = WORKFLOW.read_text()
-    for pattern in ("emoji-picker_*_all.deb", "emoji-picker-*.noarch.rpm", "emoji-picker-*.tar.gz"):
+    for pattern in ("gnomoji_*_all.deb", "gnomoji-*.noarch.rpm", "gnomoji-*.tar.gz"):
         assert pattern in text, pattern
 
 
@@ -36,7 +36,7 @@ def test_smoke_tests_check_the_extension_and_no_udev_rule():
     for script in SMOKE:
         text = script.read_text()
         assert "gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/metadata.json" in text
-        assert "PYTHONPATH=/usr/lib/emoji-picker" in text
+        assert "PYTHONPATH=/usr/lib/gnomoji" in text
         assert "want: no udev rule" in text
         assert script.stat().st_mode & 0o111
 

@@ -1,9 +1,9 @@
 # Packages the tree packaging/build.sh has already laid out (passed in as the stage macro);
 # build.sh calls rpmbuild with --define "stage ..." --define "pkgversion ...".
-Name:           emoji-picker
+Name:           gnomoji
 Version:        %{pkgversion}
 Release:        1
-Summary:        Double-tap right Shift emoji picker for GNOME
+Summary:        Gnomoji: double-tap right Shift to pick an emoji, for GNOME
 License:        MIT
 URL:            https://github.com/mathewdbutton/emoji-picker
 BuildArch:      noarch
@@ -15,7 +15,7 @@ Requires:       python3 >= 3.11, python3-gobject, gtk4, libadwaita, google-noto-
 %define _build_id_links none
 
 %description
-Double-tap right Shift in a text field to open an emoji picker. Search or browse,
+Double-tap right Shift in a text field to open Gnomoji. Search or browse,
 press Enter, and the emoji is typed in. A small GNOME Shell extension does the
 typing, so it never touches the clipboard.
 
@@ -23,20 +23,20 @@ typing, so it never touches the clipboard.
 cp -a %{stage}/. %{buildroot}/
 
 %post
-python3 -m compileall -q /usr/lib/emoji-picker >/dev/null 2>&1 || :
-sh /usr/lib/emoji-picker/enable-for-everyone || :
+python3 -m compileall -q /usr/lib/gnomoji >/dev/null 2>&1 || :
+sh /usr/lib/gnomoji/enable-for-everyone || :
 
 %preun
 if [ "$1" -eq 0 ]; then
-    sh /usr/lib/emoji-picker/disable-for-everyone || :
-    find /usr/lib/emoji-picker -name __pycache__ -type d -prune -exec rm -rf {} + || :
+    sh /usr/lib/gnomoji/disable-for-everyone || :
+    find /usr/lib/gnomoji -name __pycache__ -type d -prune -exec rm -rf {} + || :
 fi
 
 %files
-/usr/lib/emoji-picker
-/usr/bin/emoji-picker
-/usr/lib/systemd/user/emoji-picker.service
+/usr/lib/gnomoji
+/usr/bin/gnomoji
+/usr/lib/systemd/user/gnomoji.service
 /usr/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io
 /usr/share/applications/local.emojipicker.EmojiPicker.desktop
 /usr/share/icons/hicolor/scalable/apps/local.emojipicker.EmojiPicker.svg
-/usr/share/doc/emoji-picker
+/usr/share/doc/gnomoji

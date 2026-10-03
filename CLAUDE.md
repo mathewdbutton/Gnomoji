@@ -1,8 +1,8 @@
-# Emoji Picker: notes for Claude
+# Gnomoji: notes for Claude
 
-A Mac-style emoji picker for GNOME on **Wayland** (built on Ubuntu 24.04 / GNOME 46; GNOME
-47-50 supported too, see below). Double-tap **right Shift**, search or browse, press Enter,
-and a small GNOME Shell extension types the emoji into the focused field. No clipboard.
+Gnomoji brings a Mac-style emoji panel to GNOME on **Wayland** (built on Ubuntu 24.04 / GNOME
+46; GNOME 47-50 supported too, see below). Double-tap **right Shift**, search or browse, press
+Enter, and a small GNOME Shell extension types the emoji into the focused field. No clipboard.
 
 Machine-specific notes, project status and working preferences live in `CLAUDE.local.md`
 (git-ignored, so it may not exist). Anything about one particular machine or person goes there,
@@ -45,7 +45,7 @@ never in this file.
   sender check, by decision), so the extension refuses it unless a `DoubleTap` armed it, takes
   the arm at once (a second `Insert` needs a new double-tap), and refuses text that couldn't be
   an emoji (`acceptInsert` in `extension/insertWaiter.js`: at most 32 code points, no C0/C1
-  control characters). Picking from a picker opened with `emoji-picker` rather than a
+  control characters). Picking from a picker opened with `gnomoji` rather than a
   double-tap therefore inserts nothing unless an unused double-tap is still armed.
 - **Extension code only loads at the next log-in**, and GNOME only notices newly installed
   extension files at log-in too. Extensions are switched on per person, not system-wide, which
@@ -103,22 +103,22 @@ never in this file.
 uv run pytest -q && uv run ruff check            # 207 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run; inserts only with the extension installed
 .venv/bin/python -m emoji_picker.window          # window preview; doesn't insert (steals focus!)
-journalctl --user -u emoji-picker -f             # service logs, once installed
+journalctl --user -u gnomoji -f                  # service logs, once installed
 packaging/build.sh                               # .deb, .rpm, .tar.gz from HEAD into dist/ (.rpm needs rpm installed)
 ```
 
 Runtime uses **only** `/usr/bin/python3` plus distro packages. `.venv` (uv, `--system-site-packages`)
 is for pytest/ruff only. No pip packages at runtime. A source install (`./install.sh`) copies the
-code into `~/.local/share/emoji-picker`, so re-run it after changing code. A `.deb`/`.rpm` install
-runs the packaged copy under `/usr/lib/emoji-picker`.
+code into `~/.local/share/gnomoji`, so re-run it after changing code. A `.deb`/`.rpm` install
+runs the packaged copy under `/usr/lib/gnomoji`.
 
 ## Packaging and releasing
 
 One script, `packaging/build.sh [OUT_DIR]`, builds all three formats from `git archive HEAD`
 (committed files only; uncommitted edits aren't in any of them). All three install the same
-tree, just at a different prefix: `/usr/lib/emoji-picker/emoji_picker/` for the `.deb`/`.rpm`,
-`~/.local/share/emoji-picker/emoji_picker/` for `install.sh`. Code is reached via `PYTHONPATH`
-in the launcher, service and desktop entry (`packaging/emoji-picker`, `systemd/emoji-picker.service`,
+tree, just at a different prefix: `/usr/lib/gnomoji/emoji_picker/` for the `.deb`/`.rpm`,
+`~/.local/share/gnomoji/emoji_picker/` for `install.sh`. Code is reached via `PYTHONPATH`
+in the launcher, service and desktop entry (`packaging/gnomoji`, `systemd/gnomoji.service`,
 `desktop/*.desktop`, all templated with `@APPDIR@`) rather than Python's own site-packages:
 Fedora's site-packages path changes with each Python version, and this way both formats share
 one layout.
@@ -131,7 +131,7 @@ graphical session; before removal (not upgrade), stop it in running sessions and
 globally. Every step past unpacking is best-effort and never fails the install or removal. The
 `.deb` compiles bytecode with `py3compile`/`py3clean`; the `.rpm` runs
 `python3 -m compileall -q` in `%post` and deletes `__pycache__` folders in `%preun` on removal
-— both pointed at `/usr/lib/emoji-picker`. `tests/test_maintainer_scripts.py` runs the shared
+— both pointed at `/usr/lib/gnomoji`. `tests/test_maintainer_scripts.py` runs the shared
 scripts against fake `systemctl`/`loginctl`; `tests/test_package.py` builds all three and checks
 their contents; `tests/test_install_scripts.py` runs `install.sh`/`uninstall.sh` in a throwaway
 home against fake `systemctl`/`gnome-extensions`/`gnome-shell`/`gsettings`/`fc-list`.

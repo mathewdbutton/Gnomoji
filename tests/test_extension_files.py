@@ -15,7 +15,7 @@ def test_metadata_is_valid():
     meta = json.loads((EXTENSION / "metadata.json").read_text(encoding="utf-8"))
     assert meta["uuid"] == UUID
     assert meta["shell-version"] == ["46", "47", "48", "49", "50"]
-    assert meta["name"] == "Emoji Picker"
+    assert meta["name"] == "Gnomoji"
 
 
 def test_extension_restores_the_locate_pointer_key():

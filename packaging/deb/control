@@ -1,4 +1,4 @@
-Package: emoji-picker
+Package: gnomoji
 Version: @VERSION@
 Architecture: all
 Maintainer: Mathew Button <mat@pushbutton.xyz>
@@ -7,7 +7,7 @@ Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, fonts-noto
 Section: utils
 Priority: optional
 Homepage: https://github.com/mathewdbutton/emoji-picker
-Description: Double-tap right Shift emoji picker for GNOME
- Double-tap right Shift in a text field to open an emoji picker. Search or
+Description: Gnomoji: double-tap right Shift to pick an emoji, for GNOME
+ Double-tap right Shift in a text field to open Gnomoji. Search or
  browse, press Enter, and the emoji is typed in. A small GNOME Shell extension
  does the typing, so it never touches the clipboard.

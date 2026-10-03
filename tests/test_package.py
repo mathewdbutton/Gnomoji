@@ -16,11 +16,11 @@ REPO = Path(__file__).resolve().parent.parent
 BUILD = REPO / "packaging" / "build.sh"
 APP_ID = "local.emojipicker.EmojiPicker"
 UUID = "emoji-picker@mathewdbutton.github.io"
-APP = "usr/lib/emoji-picker"
+APP = "usr/lib/gnomoji"
 EXT = f"usr/share/gnome-shell/extensions/{UUID}"
-SERVICE = "usr/lib/systemd/user/emoji-picker.service"
+SERVICE = "usr/lib/systemd/user/gnomoji.service"
 DESKTOP = f"usr/share/applications/{APP_ID}.desktop"
-DOC = "usr/share/doc/emoji-picker"
+DOC = "usr/share/doc/gnomoji"
 
 INSTALLED_FILES = [
     f"{APP}/emoji_picker/__main__.py",
@@ -32,7 +32,7 @@ INSTALLED_FILES = [
     f"{EXT}/tapDetector.js",
     f"{EXT}/insertWaiter.js",
     f"{EXT}/metadata.json",
-    "usr/bin/emoji-picker",
+    "usr/bin/gnomoji",
     SERVICE,
     DESKTOP,
     f"usr/share/icons/hicolor/scalable/apps/{APP_ID}.svg",
@@ -76,7 +76,7 @@ def dist(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def deb(dist):
-    return dist / f"emoji-picker_{version()}_all.deb"
+    return dist / f"gnomoji_{version()}_all.deb"
 
 
 @pytest.fixture(scope="module")
@@ -98,7 +98,7 @@ def deb_field(deb: Path, name: str) -> str:
 @needs_deb
 def test_deb_name_and_fields(deb):
     assert deb.is_file()
-    assert deb_field(deb, "Package") == "emoji-picker"
+    assert deb_field(deb, "Package") == "gnomoji"
     assert deb_field(deb, "Version") == version()
     assert deb_field(deb, "Architecture") == "all"
     assert deb_field(deb, "Maintainer") == "Mathew Button <mat@pushbutton.xyz>"
@@ -142,8 +142,8 @@ def test_deb_service_desktop_and_launcher_use_the_app_folder(deb_root):
     assert "ConditionUser=!@system" in service
     assert f'Exec=env "PYTHONPATH=/{APP}" /usr/bin/python3 -m emoji_picker' in (
         deb_root / DESKTOP).read_text()
-    assert f'export PYTHONPATH="/{APP}"' in (deb_root / "usr/bin/emoji-picker").read_text()
-    for rel in (SERVICE, DESKTOP, "usr/bin/emoji-picker"):
+    assert f'export PYTHONPATH="/{APP}"' in (deb_root / "usr/bin/gnomoji").read_text()
+    for rel in (SERVICE, DESKTOP, "usr/bin/gnomoji"):
         assert "@APPDIR@" not in (deb_root / rel).read_text(), rel
 
 
@@ -156,7 +156,7 @@ def test_deb_extension_metadata(deb_root):
 
 @needs_deb
 def test_deb_modes_and_owners(deb, deb_root):
-    for rel in ["usr/bin/emoji-picker", f"{APP}/enable-for-everyone", f"{APP}/disable-for-everyone",
+    for rel in ["usr/bin/gnomoji", f"{APP}/enable-for-everyone", f"{APP}/disable-for-everyone",
                 "DEBIAN/postinst", "DEBIAN/prerm"]:
         assert (deb_root / rel).stat().st_mode & 0o777 == 0o755, rel
     listing = subprocess.run(["dpkg-deb", "-c", str(deb)], check=True, capture_output=True,
@@ -181,7 +181,7 @@ def test_deb_copyright_and_changelog(deb_root):
     text = (deb_root / DOC / "copyright").read_text()
     assert "MIT License" in text and "Apache" in text and "Unicode" in text
     changelog = gzip.decompress((deb_root / DOC / "changelog.gz").read_bytes()).decode()
-    assert changelog.startswith(f"emoji-picker ({version()}) ")
+    assert changelog.startswith(f"gnomoji ({version()}) ")
 
 
 # --- .rpm ----------------------------------------------------------------------------
@@ -194,13 +194,13 @@ def rpm_query(rpm: Path, *args: str) -> str:
 
 @pytest.fixture(scope="module")
 def rpm(dist):
-    return dist / f"emoji-picker-{version()}-1.noarch.rpm"
+    return dist / f"gnomoji-{version()}-1.noarch.rpm"
 
 
 @needs_rpm
 def test_rpm_name_and_version(rpm):
     assert rpm.is_file()
-    assert rpm_query(rpm, "--qf", "%{NAME} %{VERSION} %{ARCH}") == f"emoji-picker {version()} noarch"
+    assert rpm_query(rpm, "--qf", "%{NAME} %{VERSION} %{ARCH}") == f"gnomoji {version()} noarch"
 
 
 @needs_rpm
@@ -224,8 +224,8 @@ def test_rpm_has_the_same_files_as_the_deb(rpm, deb_root):
 @needs_rpm
 def test_rpm_scripts_enable_and_disable(rpm):
     scripts = rpm_query(rpm, "--scripts")
-    assert "/usr/lib/emoji-picker/enable-for-everyone" in scripts
-    assert "/usr/lib/emoji-picker/disable-for-everyone" in scripts
+    assert "/usr/lib/gnomoji/enable-for-everyone" in scripts
+    assert "/usr/lib/gnomoji/disable-for-everyone" in scripts
 
 
 # --- tarball ---------------------------------------------------------------------------
@@ -233,18 +233,18 @@ def test_rpm_scripts_enable_and_disable(rpm):
 
 @pytest.fixture(scope="module")
 def tarball(dist):
-    return dist / f"emoji-picker-{version()}.tar.gz"
+    return dist / f"gnomoji-{version()}.tar.gz"
 
 
 def test_tarball_is_a_snapshot_with_the_installer(tarball):
-    prefix = f"emoji-picker-{version()}/"
+    prefix = f"gnomoji-{version()}/"
     with tarfile.open(tarball) as tar:
         names = tar.getnames()
         install = tar.getmember(prefix + "install.sh")
         assert install.mode & 0o111
     assert all(n.startswith(prefix) or n == prefix.rstrip("/") for n in names)
     for rel in ("install.sh", "uninstall.sh", "extension/metadata.json",
-                "src/emoji_picker/__main__.py", "systemd/emoji-picker.service", "LICENSE"):
+                "src/emoji_picker/__main__.py", "systemd/gnomoji.service", "LICENSE"):
         assert prefix + rel in names, rel
     assert not any("CLAUDE.local" in n for n in names)
 
@@ -273,7 +273,7 @@ def test_builds_only_committed_files(tmp_path):
 def test_build_work_folder_ignores_tmpdir():
     # rpmbuild's --define "stage $root" / "_topdir ..." split on spaces, so the work folder
     # mustn't come from a TMPDIR that might have them.
-    assert 'work="$(mktemp -d /tmp/emoji-picker-build.XXXXXX)"' in BUILD.read_text()
+    assert 'work="$(mktemp -d /tmp/gnomoji-build.XXXXXX)"' in BUILD.read_text()
 
 
 @needs_deb

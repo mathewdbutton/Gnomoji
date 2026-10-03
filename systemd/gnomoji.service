@@ -1,7 +1,7 @@
 # Template: install.sh and packaging/build.sh replace the APPDIR placeholder with the
 # folder holding the emoji_picker package.
 [Unit]
-Description=Emoji picker (double-tap right Shift)
+Description=Gnomoji (double-tap right Shift)
 PartOf=graphical-session.target
 After=graphical-session.target
 ConditionUser=!@system

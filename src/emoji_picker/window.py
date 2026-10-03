@@ -62,7 +62,7 @@ class PickerWindow(Adw.ApplicationWindow):
         skin_tone: SkinTone,
         on_pick: Callable[[Emoji], None],
     ):
-        super().__init__(application=application, title="Emoji Picker")
+        super().__init__(application=application, title="Gnomoji")
         self.set_default_size(380, 420)
         self.set_resizable(False)
         self.set_hide_on_close(True)

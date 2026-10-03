@@ -5,11 +5,11 @@ set -e
 
 # A root-owned __pycache__ must never block removal.
 case "$1" in
-    remove|upgrade) py3clean /usr/lib/emoji-picker || true ;;
+    remove|upgrade) py3clean /usr/lib/gnomoji || true ;;
 esac
 
 if [ "$1" = remove ]; then
-    sh /usr/lib/emoji-picker/disable-for-everyone || true
+    sh /usr/lib/gnomoji/disable-for-everyone || true
 fi
 
 exit 0

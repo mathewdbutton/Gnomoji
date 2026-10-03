@@ -57,9 +57,9 @@ def run(tmp_path):
 def test_enable_turns_it_on_for_everyone_and_starts_it_in_desktop_sessions(run):
     result, calls = run("enable-for-everyone")
     assert result.returncode == 0, result.stderr
-    assert "systemctl --global enable emoji-picker.service" in calls
+    assert "systemctl --global enable gnomoji.service" in calls
     reload = calls.index(f"{ALICE} daemon-reload")
-    assert calls[reload + 1] == f"{ALICE} restart emoji-picker.service"
+    assert calls[reload + 1] == f"{ALICE} restart gnomoji.service"
     assert not any("bob@" in c or "carol@.host restart" in c for c in calls)
 
 
@@ -77,8 +77,8 @@ def test_enable_never_touches_udev(run):
 def test_disable_stops_it_in_running_sessions_and_turns_it_off(run):
     result, calls = run("disable-for-everyone")
     assert result.returncode == 0, result.stderr
-    assert f"{ALICE} stop emoji-picker.service" in calls
-    assert "systemctl --global disable emoji-picker.service" in calls
+    assert f"{ALICE} stop gnomoji.service" in calls
+    assert "systemctl --global disable gnomoji.service" in calls
 
 
 def test_disable_succeeds_when_everything_fails(run):
@@ -90,26 +90,26 @@ def test_disable_succeeds_when_everything_fails(run):
 def test_deb_postinst_compiles_then_enables_on_configure_only():
     text = (PACKAGING / "deb" / "postinst").read_text()
     assert 'if [ "$1" = configure ]; then' in text
-    assert text.index("py3compile /usr/lib/emoji-picker") < text.index(
-        "sh /usr/lib/emoji-picker/enable-for-everyone"
+    assert text.index("py3compile /usr/lib/gnomoji") < text.index(
+        "sh /usr/lib/gnomoji/enable-for-everyone"
     )
 
 
 def test_deb_prerm_cleans_bytecode_and_disables_only_on_remove():
     text = (PACKAGING / "deb" / "prerm").read_text()
-    assert "remove|upgrade) py3clean /usr/lib/emoji-picker" in text
+    assert "remove|upgrade) py3clean /usr/lib/gnomoji" in text
     assert 'if [ "$1" = remove ]; then' in text
-    assert "sh /usr/lib/emoji-picker/disable-for-everyone" in text
+    assert "sh /usr/lib/gnomoji/disable-for-everyone" in text
 
 
 def test_rpm_scriptlets_use_the_same_scripts():
     text = SPEC.read_text()
     post = text.split("%post", 1)[1].split("%preun", 1)[0]
     preun = text.split("%preun", 1)[1].split("%files", 1)[0]
-    assert "python3 -m compileall -q /usr/lib/emoji-picker" in post
-    assert "sh /usr/lib/emoji-picker/enable-for-everyone" in post
+    assert "python3 -m compileall -q /usr/lib/gnomoji" in post
+    assert "sh /usr/lib/gnomoji/enable-for-everyone" in post
     assert 'if [ "$1" -eq 0 ]; then' in preun
-    assert "sh /usr/lib/emoji-picker/disable-for-everyone" in preun
+    assert "sh /usr/lib/gnomoji/disable-for-everyone" in preun
     assert "__pycache__" in preun
 
 
@@ -121,19 +121,19 @@ def test_no_udev_anywhere_in_packaging():
 
 
 def test_launcher_template_runs_the_package():
-    text = (PACKAGING / "emoji-picker").read_text()
+    text = (PACKAGING / "gnomoji").read_text()
     assert 'export PYTHONPATH="@APPDIR@"' in text
     assert 'exec /usr/bin/python3 -m emoji_picker "$@"' in text
 
 
 def test_scripts_are_executable():
     for rel in ("enable-for-everyone", "disable-for-everyone", "deb/postinst", "deb/prerm",
-                "emoji-picker", "build.sh"):
+                "gnomoji", "build.sh"):
         assert (PACKAGING / rel).stat().st_mode & 0o111, rel
 
 
 @pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
 def test_scripts_pass_shellcheck():
     scripts = ["enable-for-everyone", "disable-for-everyone", "deb/postinst", "deb/prerm",
-               "emoji-picker", "build.sh"]
+               "gnomoji", "build.sh"]
     subprocess.run(["shellcheck", *(str(PACKAGING / s) for s in scripts)], check=True)

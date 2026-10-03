@@ -1,6 +1,6 @@
-# Emoji Picker
+# Gnomoji
 
-Double-tap **right Shift** in a text field in GNOME (Wayland) to open an emoji picker. Search
+Double-tap **right Shift** in a text field in GNOME (Wayland) to open Gnomoji. Search
 or browse, then Enter (or click) types the emoji straight into the field. A small GNOME Shell
 extension does the typing: no clipboard, no special keyboard access, and no `sudo` for the
 picker itself.
@@ -19,27 +19,27 @@ differs.
 
 ### Ubuntu/Debian (.deb)
 
-Download `emoji-picker_<version>_all.deb` from the
+Download `gnomoji_<version>_all.deb` from the
 [latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest) and
 double-click it. App Center opens; click **Install**. It warns that the package comes from
 outside the Ubuntu store: that's expected for a download like this.
 
-Prefer a terminal? `sudo apt install ./emoji-picker_<version>_all.deb`
+Prefer a terminal? `sudo apt install ./gnomoji_<version>_all.deb`
 
 ### Fedora (.rpm)
 
-Download `emoji-picker-<version>-1.noarch.rpm` from the
+Download `gnomoji-<version>-1.noarch.rpm` from the
 [latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest), then:
 
 ```bash
-sudo dnf install ./emoji-picker-<version>-1.noarch.rpm
+sudo dnf install ./gnomoji-<version>-1.noarch.rpm
 ```
 
 ### Any distro, no sudo (tarball)
 
 ```bash
-tar -xzf emoji-picker-<version>.tar.gz
-cd emoji-picker-<version>
+tar -xzf gnomoji-<version>.tar.gz
+cd gnomoji-<version>
 ./install.sh
 ```
 
@@ -80,7 +80,7 @@ the clone rather than running the app directly.
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
 | Click ✋ (next to the search box) | Choose a skin tone. It applies to every emoji that has tones, except "Recently used", which keeps the tone you picked each one in. It's remembered. |
 | Click **Clear** (on the "Recently used" heading) | Empty the recently used list. It fills up again as you pick. |
-| Run `emoji-picker` again | Toggles the picker (open if closed, close if open). To insert, open it with the double-tap instead: a pick only goes to the window you last double-tapped right Shift in, once per double-tap, so a picker opened this way usually inserts nothing. |
+| Run `gnomoji` again | Toggles the picker (open if closed, close if open). To insert, open it with the double-tap instead: a pick only goes to the window you last double-tapped right Shift in, once per double-tap, so a picker opened this way usually inserts nothing. |
 
 ## Configuration
 
@@ -91,7 +91,7 @@ double_tap_ms = 300   # max gap between the right-Shift taps (50-2000)
 ```
 
 Changes apply a moment after you save; no restart needed. If a value is invalid, the picker
-keeps the previous setting and logs a warning (`journalctl --user -u emoji-picker -f`).
+keeps the previous setting and logs a warning (`journalctl --user -u gnomoji -f`).
 
 An old config file from 0.2 may still have `restore_clipboard`, `restore_delay_ms`,
 `paste_delay_ms` or `release_after_read_ms`: those were clipboard settings and no longer do
@@ -119,9 +119,9 @@ characters such as Enter). Normally that's the emoji you click or press Enter on
 See [UNINSTALL.md](UNINSTALL.md) for every file each route installs and how to remove it.
 Short version:
 
-- `.deb`: `sudo apt remove emoji-picker`
-- `.rpm`: `sudo dnf remove emoji-picker`
-- tarball / source: `~/.local/share/emoji-picker/uninstall.sh` (add `--purge` to also delete
+- `.deb`: `sudo apt remove gnomoji`
+- `.rpm`: `sudo dnf remove gnomoji`
+- tarball / source: `~/.local/share/gnomoji/uninstall.sh` (add `--purge` to also delete
   your recents, skin tone and config)
 
 ## Troubleshooting
@@ -131,8 +131,8 @@ Short version:
   it doesn't, log out and back in, or switch it on by hand in the Extensions app.
 - **Logs:**
   ```bash
-  journalctl --user -u emoji-picker -f                                  # the app
-  journalctl -f -o cat /usr/bin/gnome-shell | grep emoji-picker         # the extension
+  journalctl --user -u gnomoji -f                                       # the app
+  journalctl -f -o cat /usr/bin/gnome-shell | grep gnomoji              # the extension
   ```
 - **A new emoji takes a moment to appear the first time, in any app:** a hand-installed
   vector (COLRv1) Noto Color Emoji font is slow to draw each emoji the first time, for every

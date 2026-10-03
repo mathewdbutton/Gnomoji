@@ -1,4 +1,4 @@
-// Emoji Picker, Shell half. The Python app (src/emoji_picker) draws the picker window;
+// Gnomoji, Shell half. The Python app (src/emoji_picker) draws the picker window;
 // this extension does the two things only GNOME Shell can:
 //
 // 1. Trigger. Extensions can't see keys going to apps, but Mutter's "locate pointer"
@@ -19,7 +19,7 @@
 // whichever of us starts first.
 //
 // Changes here only load at the next login. Logs:
-//   journalctl -f -o cat /usr/bin/gnome-shell | grep emoji-picker
+//   journalctl -f -o cat /usr/bin/gnome-shell | grep gnomoji
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -42,7 +42,7 @@ const DBUS_IFACE = `<node>
 </node>`;
 
 function log(msg) {
-    console.log(`[emoji-picker] ${msg}`);
+    console.log(`[gnomoji] ${msg}`);
 }
 
 function nowMs() {

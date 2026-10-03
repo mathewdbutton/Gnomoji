@@ -89,13 +89,13 @@ def test_nothing_withdrawn_when_never_shown():
 
 def test_message_when_the_extension_is_running():
     assert message(True) == (
-        "Emoji Picker is ready", "Double-tap right Shift in a text field to open it."
+        "Gnomoji is ready", "Double-tap right Shift in a text field to open it."
     )
 
 
 def test_message_when_a_log_out_is_needed():
     assert message(False) == (
-        "Emoji Picker is installed", "Log out and back in once to finish setting it up."
+        "Gnomoji is installed", "Log out and back in once to finish setting it up."
     )
 
 

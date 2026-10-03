@@ -81,7 +81,7 @@ class ShellLink:
         try:
             connection.call_finish(result)
         except GLib.Error as e:
-            log.error("Couldn't insert (is the Emoji Picker extension enabled?): %s", e.message)
+            log.error("Couldn't insert (is the Gnomoji extension enabled?): %s", e.message)
 
     def _on_configure_done(self, connection, result) -> None:
         try:

@@ -5,10 +5,10 @@
 
 loginctl list-users --no-legend 2>/dev/null | while read -r uid user _; do
     systemctl --quiet is-active "user@$uid.service" 2>/dev/null || continue
-    systemctl --user --machine="$user@.host" stop emoji-picker.service \
-        || echo "emoji-picker: couldn't stop it for $user; it stops when they log out."
+    systemctl --user --machine="$user@.host" stop gnomoji.service \
+        || echo "gnomoji: couldn't stop it for $user; it stops when they log out."
 done
-systemctl --global disable emoji-picker.service \
-    || echo "emoji-picker: couldn't disable it for all users."
+systemctl --global disable gnomoji.service \
+    || echo "gnomoji: couldn't disable it for all users."
 
 exit 0

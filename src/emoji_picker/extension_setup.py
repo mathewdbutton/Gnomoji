@@ -51,7 +51,7 @@ def enable_once(settings, marker: Path = MARKER_PATH) -> bool:
         log.warning("GNOME Shell's settings aren't installed: can't switch the extension on")
     else:
         enable(settings)
-        log.info("Switched the Emoji Picker extension on (first start)")
+        log.info("Switched the Gnomoji extension on (first start)")
     try:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.touch()

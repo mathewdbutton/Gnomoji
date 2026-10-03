@@ -5,8 +5,8 @@ set -e
 
 if [ "$1" = configure ]; then
     # Compile first, so the restarted picker uses the compiled files.
-    py3compile /usr/lib/emoji-picker || true
-    sh /usr/lib/emoji-picker/enable-for-everyone || true
+    py3compile /usr/lib/gnomoji || true
+    sh /usr/lib/gnomoji/enable-for-everyone || true
 fi
 
 exit 0

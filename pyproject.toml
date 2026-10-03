@@ -1,7 +1,7 @@
 [project]
-name = "emoji-picker"
+name = "gnomoji"
 version = "0.3.0"
-description = "Double-tap right Shift emoji picker for GNOME on Wayland"
+description = "Gnomoji: double-tap right Shift to pick an emoji, for GNOME on Wayland"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = []  # runtime deps come from apt; see README

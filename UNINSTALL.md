@@ -1,4 +1,4 @@
-# Uninstalling the emoji picker
+# Uninstalling Gnomoji
 
 Everything the picker puts on your machine outside its own folder, and how to remove it. Keep
 this file accurate: any change that installs or changes something outside the repo must update
@@ -9,27 +9,27 @@ prefix differs.
 
 ## If you installed the `.deb`
 
-Open the `.deb` you installed from in App Center again and click **Uninstall** (Emoji Picker
-doesn't appear in App Center's search or installed list), or `sudo apt remove emoji-picker`.
+Open the `.deb` you installed from in App Center again and click **Uninstall** (Gnomoji
+doesn't appear in App Center's search or installed list), or `sudo apt remove gnomoji`.
 
 | What | Where |
 |---|---|
-| App code | `/usr/lib/emoji-picker/` (the `emoji_picker/` package, plus the shared `enable-for-everyone`/`disable-for-everyone` helper scripts) |
-| Launcher | `/usr/bin/emoji-picker` |
-| User service, enabled for everyone | `/usr/lib/systemd/user/emoji-picker.service` |
+| App code | `/usr/lib/gnomoji/` (the `emoji_picker/` package, plus the shared `enable-for-everyone`/`disable-for-everyone` helper scripts) |
+| Launcher | `/usr/bin/gnomoji` |
+| User service, enabled for everyone | `/usr/lib/systemd/user/gnomoji.service` |
 | GNOME Shell extension | `/usr/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/` |
 | Desktop entry, icon | `/usr/share/applications/local.emojipicker.EmojiPicker.desktop`, `/usr/share/icons/hicolor/scalable/apps/local.emojipicker.EmojiPicker.svg` |
-| Package docs | `/usr/share/doc/emoji-picker/` |
+| Package docs | `/usr/share/doc/gnomoji/` |
 
 ## If you installed the `.rpm`
 
-`sudo dnf remove emoji-picker`. Same files as the `.deb` table above.
+`sudo dnf remove gnomoji`. Same files as the `.deb` table above.
 
 ## If you ran `install.sh` (tarball or a clone)
 
 ```bash
-~/.local/share/emoji-picker/uninstall.sh           # keep recents, skin tone and config
-~/.local/share/emoji-picker/uninstall.sh --purge   # also delete them
+~/.local/share/gnomoji/uninstall.sh           # keep recents, skin tone and config
+~/.local/share/gnomoji/uninstall.sh --purge   # also delete them
 ```
 
 If the `.deb` or `.rpm` is installed as well, `uninstall.sh` starts the package's copy once its
@@ -37,12 +37,12 @@ own is gone.
 
 | What | Where |
 |---|---|
-| App code | `~/.local/share/emoji-picker/emoji_picker/` |
-| Launcher | `~/.local/bin/emoji-picker` |
-| User service, enabled for you | `~/.config/systemd/user/emoji-picker.service` |
+| App code | `~/.local/share/gnomoji/emoji_picker/` |
+| Launcher | `~/.local/bin/gnomoji` |
+| User service, enabled for you | `~/.config/systemd/user/gnomoji.service` |
 | GNOME Shell extension | `~/.local/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/` |
 | Desktop entry, icon | `~/.local/share/applications/local.emojipicker.EmojiPicker.desktop`, `~/.local/share/icons/hicolor/scalable/apps/local.emojipicker.EmojiPicker.svg` |
-| Uninstaller itself | `~/.local/share/emoji-picker/uninstall.sh` |
+| Uninstaller itself | `~/.local/share/gnomoji/uninstall.sh` |
 
 ## State and config (any route)
 
@@ -80,30 +80,17 @@ rm -rf ~/.local/state/emoji-picker ~/.config/emoji-picker
   gsettings reset org.gnome.mutter locate-pointer-key
   ```
 
-## 0.2.x leftovers
+## If you had an earlier `emoji-picker` install
 
-0.2 read the keyboard through a udev rule and pasted through the clipboard; 0.3 needs neither,
-and no longer ships the rule. Depending on how you installed 0.2.x:
-
-- **Upgraded from the 0.2.x `.deb`:** the upgrade removes the package's copy of the rule
-  (`/usr/lib/udev/rules.d/70-emoji-picker.rules`) for you.
-- **Installed 0.2.x from a clone:** its copy in `/etc/udev/rules.d/70-emoji-picker.rules` (or
-  `70-emoji-picker-uinput.rules`) stays until you remove it:
-  `sudo rm /etc/udev/rules.d/70-emoji-picker.rules`. `uninstall.sh` reminds you if it's there.
-- **Membership of the `input` group**, if you joined it only for the picker (skip this if
-  another program, such as a keyboard remapper, needs it):
-  ```bash
-  sudo gpasswd -d "$USER" input   # then log out and back in
-  ```
-- **Either route: keyboard access lasts until your next log-in.** The rule tagged keyboards
-  and `/dev/uinput` with `uaccess`, so systemd-logind gave whoever was logged in at the screen
-  access to them. Removing the rule doesn't take back access already given; logging out and
-  back in does.
+Nothing was ever published under the name `emoji-picker` (no GitHub release, no tag). If you
+installed an earlier `emoji-picker` package or `install.sh` copy from this project, remove it
+first (`sudo apt remove emoji-picker`, or `~/.local/share/emoji-picker/uninstall.sh`), then
+install Gnomoji.
 
 ## Checking it's all gone
 
 ```bash
-systemctl --user status emoji-picker             # "Unit emoji-picker.service could not be found."
+systemctl --user status gnomoji                  # "Unit gnomoji.service could not be found."
 gnome-extensions info emoji-picker@mathewdbutton.github.io 2>&1   # "No such extension"
 ls ~/.local/state/emoji-picker ~/.config/emoji-picker 2>&1        # "No such file or directory" (after --purge)
 ls /etc/udev/rules.d/70-emoji-picker.rules 2>&1                   # "No such file or directory" (0.2.x leftover)

@@ -2,6 +2,30 @@
 
 **Status:** Draft for review (2026-10-02).
 
+## Renamed to Gnomoji (2026-10-03)
+
+Fedora already ships an unrelated package called `emoji-picker` (the ibus-typing-booster emoji
+picker), so this project's package, built files, launcher command, app code dir, doc dir,
+systemd service and visible name were renamed. Everywhere below that still says "Emoji Picker" /
+`emoji-picker` in that sense, read "Gnomoji" / `gnomoji` instead (the rest of this document is
+unchanged). Full brief: `.superpowers/sdd/2026-10-02-v2-port/rename-brief.md`.
+
+| What | From | To |
+|---|---|---|
+| Package name (.deb `Package:`, .rpm `Name:`) | `emoji-picker` | `gnomoji` |
+| Built files | `emoji-picker_<v>_all.deb`, `emoji-picker-<v>-1.noarch.rpm`, `emoji-picker-<v>.tar.gz` (prefix `emoji-picker-<v>/`) | `gnomoji_<v>_all.deb`, `gnomoji-<v>-1.noarch.rpm`, `gnomoji-<v>.tar.gz` (prefix `gnomoji-<v>/`) |
+| Command / launcher | `/usr/bin/emoji-picker`, `~/.local/bin/emoji-picker`; template `packaging/emoji-picker` | `/usr/bin/gnomoji`, `~/.local/bin/gnomoji`; template `packaging/gnomoji` |
+| App code dir (`@APPDIR@`) | `/usr/lib/emoji-picker`, `${XDG_DATA_HOME:-$HOME/.local/share}/emoji-picker` | `/usr/lib/gnomoji`, `${XDG_DATA_HOME:-$HOME/.local/share}/gnomoji` |
+| Doc dir | `/usr/share/doc/emoji-picker` | `/usr/share/doc/gnomoji` |
+| systemd user service | `emoji-picker.service` (template `systemd/emoji-picker.service`) | `gnomoji.service` (template `systemd/gnomoji.service`) |
+| Visible name | "Emoji Picker" | "Gnomoji": window title, welcome notification titles, desktop entry `Name=`, extension `metadata.json` `name`/`description`, README/UNINSTALL/CLAUDE.md, install/uninstall messages |
+| Extension log prefix | `[emoji-picker]` | `[gnomoji]` |
+
+Kept unchanged: the Python package `emoji_picker`, the extension UUID
+`emoji-picker@mathewdbutton.github.io`, the app id `local.emojipicker.EmojiPicker`, the
+`~/.local/state/emoji-picker/` and `~/.config/emoji-picker/` state/config folders, and the
+repo/folder name.
+
 **Supersedes:** triggering and inserting in `2026-09-25-emoji-picker-design.md` (the clipboard
 design), and the udev parts of `2026-09-27-deb-package-design.md`. Both stay the reference for
 everything this spec doesn't change: the picker window, emoji data, search, recents, skin tone,

@@ -70,10 +70,10 @@ def run(tmp_path, home, bin_dir):
 def paths(home: Path) -> dict[str, Path]:
     data = home / ".local" / "share"
     return {
-        "app": data / "emoji-picker",
+        "app": data / "gnomoji",
         "ext": data / "gnome-shell" / "extensions" / UUID,
-        "unit": home / ".config" / "systemd" / "user" / "emoji-picker.service",
-        "bin": home / ".local" / "bin" / "emoji-picker",
+        "unit": home / ".config" / "systemd" / "user" / "gnomoji.service",
+        "bin": home / ".local" / "bin" / "gnomoji",
         "desktop": data / "applications" / f"{APP_ID}.desktop",
         "icon": data / "icons" / "hicolor" / "scalable" / "apps" / f"{APP_ID}.svg",
     }
@@ -91,8 +91,8 @@ def test_install_copies_everything_into_the_home_folder(run, home):
     assert not (p["ext"] / name).is_symlink()
     assert os.access(p["bin"], os.X_OK)
     assert p["desktop"].is_file() and p["icon"].is_file()
-    assert "systemctl --user enable emoji-picker" in calls
-    assert "systemctl --user restart emoji-picker" in calls
+    assert "systemctl --user enable gnomoji" in calls
+    assert "systemctl --user restart gnomoji" in calls
     assert not list(p["app"].rglob("__pycache__"))
 
 
@@ -109,7 +109,7 @@ def test_templates_point_at_the_copied_code_with_quotes(run, home):
 
 def test_installed_comments_dont_name_the_app_folder(run, home):
     # The templates' comments mustn't contain the placeholder, or the filled-in files say
-    # "# Template: /home/.../emoji-picker is the folder...".
+    # "# Template: /home/.../gnomoji is the folder...".
     run(REPO / "install.sh")
     app = str(paths(home)["app"])
     for name in ("unit", "bin", "desktop"):
@@ -160,7 +160,7 @@ def test_uninstall_removes_everything_and_resets_the_key(run, home):
         assert not path.exists(), name
     assert f"gnome-extensions disable {UUID}" in calls
     assert "gsettings reset org.gnome.mutter locate-pointer-key" in calls
-    assert "systemctl --user disable --now emoji-picker" in calls
+    assert "systemctl --user disable --now gnomoji" in calls
 
 
 def test_uninstall_keeps_state_and_config_unless_purged(run, home):
@@ -201,8 +201,8 @@ def test_install_allows_spaces_and_sed_specials_in_the_data_folder(run, home):
     data = home / "my data & | stuff"
     result, _ = run(REPO / "install.sh", XDG_DATA_HOME=str(data))
     assert result.returncode == 0, result.stdout + result.stderr
-    unit = (home / ".config" / "systemd" / "user" / "emoji-picker.service").read_text()
-    assert f'Environment="PYTHONPATH={data / "emoji-picker"}"' in unit
+    unit = (home / ".config" / "systemd" / "user" / "gnomoji.service").read_text()
+    assert f'Environment="PYTHONPATH={data / "gnomoji"}"' in unit
 
 
 def test_update_mentions_logging_out_to_load_the_new_extension(run):
@@ -228,7 +228,7 @@ def test_uninstall_forgets_the_switched_on_marker(run, home):
 def uninstaller_with_package_unit(tmp_path: Path, unit: Path) -> Path:
     """uninstall.sh, looking for the package's unit at `unit` instead of /usr/lib."""
     text = (REPO / "uninstall.sh").read_text()
-    line = "PACKAGE_UNIT=/usr/lib/systemd/user/emoji-picker.service"
+    line = "PACKAGE_UNIT=/usr/lib/systemd/user/gnomoji.service"
     assert line in text
     script = tmp_path / "uninstall-test.sh"
     script.write_text(text.replace(line, f'PACKAGE_UNIT="{unit}"'))
@@ -239,14 +239,14 @@ def test_uninstall_hands_over_to_an_installed_package(run, tmp_path):
     unit = tmp_path / "package.service"
     unit.write_text("")
     _, calls = run(uninstaller_with_package_unit(tmp_path, unit))
-    reload, start = "systemctl --user daemon-reload", "systemctl --user start emoji-picker"
+    reload, start = "systemctl --user daemon-reload", "systemctl --user start gnomoji"
     assert start in calls
     assert calls.index(reload) < calls.index(start)
 
 
 def test_uninstall_starts_nothing_without_a_package(run, tmp_path):
     _, calls = run(uninstaller_with_package_unit(tmp_path, tmp_path / "missing.service"))
-    assert "systemctl --user start emoji-picker" not in calls
+    assert "systemctl --user start gnomoji" not in calls
 
 
 def test_uninstall_finishes_without_a_user_bus(run, home):
@@ -256,7 +256,7 @@ def test_uninstall_finishes_without_a_user_bus(run, home):
     assert result.returncode == 0, result.stdout + result.stderr
     for name, path in p.items():
         assert not path.exists(), name
-    assert "Emoji Picker removed." in result.stdout
+    assert "Gnomoji removed." in result.stdout
 
 
 @pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
