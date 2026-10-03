@@ -1,6 +1,6 @@
 #!/bin/sh
 # Run Gnomoji. If it's already running, this opens or closes it instead.
 # Template: install.sh and packaging/build.sh replace the APPDIR placeholder with the
-# folder holding the emoji_picker package.
+# folder holding the gnomoji package.
 export PYTHONPATH="@APPDIR@"
-exec /usr/bin/python3 -m emoji_picker "$@"
+exec /usr/bin/python3 -m gnomoji "$@"

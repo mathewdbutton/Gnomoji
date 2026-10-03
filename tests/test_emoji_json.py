@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-DATA = Path(__file__).resolve().parent.parent / "src" / "emoji_picker" / "data" / "emoji.json"
+DATA = Path(__file__).resolve().parent.parent / "src" / "gnomoji" / "data" / "emoji.json"
 GROUPS = [
     "Smileys & Emotion",
     "People & Body",

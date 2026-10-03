@@ -33,7 +33,7 @@ fill() { sed "s|@APPDIR@|$APP|g" "$1" > "$2"; }
 
 install -d "$root$APP" "$root/usr/bin" "$root/usr/lib/systemd/user" "$root/usr/share/applications" \
     "$root/usr/share/gnome-shell/extensions/$UUID"
-cp -r "$src/src/emoji_picker" "$root$APP/"
+cp -r "$src/src/gnomoji" "$root$APP/"
 install -m 755 "$HERE/enable-for-everyone" "$HERE/disable-for-everyone" "$root$APP/"
 cp "$src"/extension/*.js "$src/extension/metadata.json" "$root/usr/share/gnome-shell/extensions/$UUID/"
 fill "$HERE/gnomoji" "$root/usr/bin/gnomoji"

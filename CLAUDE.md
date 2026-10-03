@@ -101,8 +101,8 @@ never in this file.
 
 ```bash
 uv run pytest -q && uv run ruff check            # 207 tests, lint (ruff flags unused noqa, RUF100)
-PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run; inserts only with the extension installed
-.venv/bin/python -m emoji_picker.window          # window preview; doesn't insert (steals focus!)
+PYTHONPATH=src timeout 120 /usr/bin/python3 -m gnomoji   # foreground run; inserts only with the extension installed
+.venv/bin/python -m gnomoji.window          # window preview; doesn't insert (steals focus!)
 journalctl --user -u gnomoji -f                  # service logs, once installed
 packaging/build.sh                               # .deb, .rpm, .tar.gz from HEAD into dist/ (.rpm needs rpm installed)
 ```
@@ -116,8 +116,8 @@ runs the packaged copy under `/usr/lib/gnomoji`.
 
 One script, `packaging/build.sh [OUT_DIR]`, builds all three formats from `git archive HEAD`
 (committed files only; uncommitted edits aren't in any of them). All three install the same
-tree, just at a different prefix: `/usr/lib/gnomoji/emoji_picker/` for the `.deb`/`.rpm`,
-`~/.local/share/gnomoji/emoji_picker/` for `install.sh`. Code is reached via `PYTHONPATH`
+tree, just at a different prefix: `/usr/lib/gnomoji/gnomoji/` for the `.deb`/`.rpm`,
+`~/.local/share/gnomoji/gnomoji/` for `install.sh`. Code is reached via `PYTHONPATH`
 in the launcher, service and desktop entry (`packaging/gnomoji`, `systemd/gnomoji.service`,
 `desktop/*.desktop`, all templated with `@APPDIR@`) rather than Python's own site-packages:
 Fedora's site-packages path changes with each Python version, and this way both formats share

@@ -83,8 +83,8 @@ def test_install_copies_everything_into_the_home_folder(run, home):
     result, calls = run(REPO / "install.sh")
     assert result.returncode == 0, result.stdout + result.stderr
     p = paths(home)
-    assert (p["app"] / "emoji_picker" / "__main__.py").is_file()
-    assert (p["app"] / "emoji_picker" / "data" / "emoji.json").is_file()
+    assert (p["app"] / "gnomoji" / "__main__.py").is_file()
+    assert (p["app"] / "gnomoji" / "data" / "emoji.json").is_file()
     assert os.access(p["app"] / "uninstall.sh", os.X_OK)
     for name in ("extension.js", "tapDetector.js", "insertWaiter.js", "metadata.json"):
         assert (p["ext"] / name).is_file(), name
@@ -101,9 +101,9 @@ def test_templates_point_at_the_copied_code_with_quotes(run, home):
     p, app = paths(home), paths(home)["app"]
     unit = p["unit"].read_text()
     assert f'Environment="PYTHONPATH={app}"' in unit
-    assert "ExecStart=/usr/bin/python3 -m emoji_picker" in unit
+    assert "ExecStart=/usr/bin/python3 -m gnomoji" in unit
     assert "@APPDIR@" not in unit
-    assert f'Exec=env "PYTHONPATH={app}" /usr/bin/python3 -m emoji_picker' in p["desktop"].read_text()
+    assert f'Exec=env "PYTHONPATH={app}" /usr/bin/python3 -m gnomoji' in p["desktop"].read_text()
     assert f'export PYTHONPATH="{app}"' in p["bin"].read_text()
 
 
@@ -122,21 +122,21 @@ def test_installed_launcher_finds_the_code(run, home):
     run(REPO / "install.sh")
     app = paths(home)["app"]
     script = paths(home)["bin"].read_text().replace(
-        'exec /usr/bin/python3 -m emoji_picker "$@"',
-        'exec /usr/bin/python3 -c "import emoji_picker.emoji_data as d; print(d.DATA_PATH)"',
+        'exec /usr/bin/python3 -m gnomoji "$@"',
+        'exec /usr/bin/python3 -c "import gnomoji.emoji_data as d; print(d.DATA_PATH)"',
     )
     out = subprocess.run(["sh", "-c", script], capture_output=True, text=True, check=True).stdout
-    assert out.strip() == str(app / "emoji_picker" / "data" / "emoji.json")
+    assert out.strip() == str(app / "gnomoji" / "data" / "emoji.json")
 
 
 def test_reinstall_replaces_old_files(run, home):
     run(REPO / "install.sh")
     p = paths(home)
-    (p["app"] / "emoji_picker" / "gone_in_new_version.py").write_text("")
+    (p["app"] / "gnomoji" / "gone_in_new_version.py").write_text("")
     (p["ext"] / "gone.js").write_text("")
     result, _ = run(REPO / "install.sh")
     assert result.returncode == 0
-    assert not (p["app"] / "emoji_picker" / "gone_in_new_version.py").exists()
+    assert not (p["app"] / "gnomoji" / "gone_in_new_version.py").exists()
     assert not (p["ext"] / "gone.js").exists()
 
 

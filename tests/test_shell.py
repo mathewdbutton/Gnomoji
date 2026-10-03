@@ -3,7 +3,7 @@ from pathlib import Path
 
 from gi.repository import Gio, GLib
 
-from emoji_picker.shell import BUS_NAME, INTERFACE, OBJECT_PATH, UUID, ShellLink
+from gnomoji.shell import BUS_NAME, INTERFACE, OBJECT_PATH, UUID, ShellLink
 
 EXTENSION_JS = Path(__file__).parent.parent / "extension" / "extension.js"
 

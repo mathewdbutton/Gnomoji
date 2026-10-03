@@ -9,7 +9,7 @@ import os
 import shutil
 import subprocess
 
-from emoji_picker.fonts import BUNDLED_CONF, use_fast_emoji_font
+from gnomoji.fonts import BUNDLED_CONF, use_fast_emoji_font
 
 
 def test_sets_fontconfig_file_when_unset():

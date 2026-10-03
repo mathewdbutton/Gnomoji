@@ -1,6 +1,6 @@
 import pytest
 
-from emoji_picker.emoji_data import Emoji, EmojiData, Recents, SkinTone
+from gnomoji.emoji_data import Emoji, EmojiData, Recents, SkinTone
 
 GRIN = Emoji("😀", "grinning face", "Smileys & Emotion", ("face", "grin"))
 CRY = Emoji("😢", "crying face", "Smileys & Emotion", ("sad", "tear"))

@@ -1,5 +1,5 @@
 # Template: install.sh and packaging/build.sh replace the APPDIR placeholder with the
-# folder holding the emoji_picker package.
+# folder holding the gnomoji package.
 [Unit]
 Description=Gnomoji (double-tap right Shift)
 PartOf=graphical-session.target
@@ -10,7 +10,7 @@ StartLimitBurst=3
 
 [Service]
 Environment="PYTHONPATH=@APPDIR@"
-ExecStart=/usr/bin/python3 -m emoji_picker
+ExecStart=/usr/bin/python3 -m gnomoji
 Restart=on-failure
 RestartSec=2
 

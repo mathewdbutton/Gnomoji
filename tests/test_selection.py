@@ -1,4 +1,4 @@
-from emoji_picker.selection import Selection, section_in_view
+from gnomoji.selection import Selection, section_in_view
 
 
 def sel(sizes, index=None, columns=4):

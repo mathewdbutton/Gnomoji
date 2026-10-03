@@ -14,7 +14,7 @@ doesn't appear in App Center's search or installed list), or `sudo apt remove gn
 
 | What | Where |
 |---|---|
-| App code | `/usr/lib/gnomoji/` (the `emoji_picker/` package, plus the shared `enable-for-everyone`/`disable-for-everyone` helper scripts) |
+| App code | `/usr/lib/gnomoji/` (the `gnomoji/` package, plus the shared `enable-for-everyone`/`disable-for-everyone` helper scripts) |
 | Launcher | `/usr/bin/gnomoji` |
 | User service, enabled for everyone | `/usr/lib/systemd/user/gnomoji.service` |
 | GNOME Shell extension | `/usr/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/` |
@@ -37,7 +37,7 @@ own is gone.
 
 | What | Where |
 |---|---|
-| App code | `~/.local/share/gnomoji/emoji_picker/` |
+| App code | `~/.local/share/gnomoji/gnomoji/` |
 | Launcher | `~/.local/bin/gnomoji` |
 | User service, enabled for you | `~/.config/systemd/user/gnomoji.service` |
 | GNOME Shell extension | `~/.local/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/` |

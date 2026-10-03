@@ -23,9 +23,9 @@ DESKTOP = f"usr/share/applications/{APP_ID}.desktop"
 DOC = "usr/share/doc/gnomoji"
 
 INSTALLED_FILES = [
-    f"{APP}/emoji_picker/__main__.py",
-    f"{APP}/emoji_picker/data/emoji.json",
-    f"{APP}/emoji_picker/data/fonts.conf",
+    f"{APP}/gnomoji/__main__.py",
+    f"{APP}/gnomoji/data/emoji.json",
+    f"{APP}/gnomoji/data/fonts.conf",
     f"{APP}/enable-for-everyone",
     f"{APP}/disable-for-everyone",
     f"{EXT}/extension.js",
@@ -127,7 +127,7 @@ def test_deb_ships_no_udev_rule(deb_root):
 
 @needs_deb
 def test_deb_whole_python_package_is_included(deb_root):
-    tracked = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD", "src/emoji_picker"],
+    tracked = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD", "src/gnomoji"],
                              cwd=REPO, check=True, capture_output=True, text=True).stdout.split()
     for path in tracked:
         rel = Path(path).relative_to("src")
@@ -138,9 +138,9 @@ def test_deb_whole_python_package_is_included(deb_root):
 def test_deb_service_desktop_and_launcher_use_the_app_folder(deb_root):
     service = (deb_root / SERVICE).read_text()
     assert f'Environment="PYTHONPATH=/{APP}"' in service
-    assert "ExecStart=/usr/bin/python3 -m emoji_picker" in service
+    assert "ExecStart=/usr/bin/python3 -m gnomoji" in service
     assert "ConditionUser=!@system" in service
-    assert f'Exec=env "PYTHONPATH=/{APP}" /usr/bin/python3 -m emoji_picker' in (
+    assert f'Exec=env "PYTHONPATH=/{APP}" /usr/bin/python3 -m gnomoji' in (
         deb_root / DESKTOP).read_text()
     assert f'export PYTHONPATH="/{APP}"' in (deb_root / "usr/bin/gnomoji").read_text()
     for rel in (SERVICE, DESKTOP, "usr/bin/gnomoji"):
@@ -244,7 +244,7 @@ def test_tarball_is_a_snapshot_with_the_installer(tarball):
         assert install.mode & 0o111
     assert all(n.startswith(prefix) or n == prefix.rstrip("/") for n in names)
     for rel in ("install.sh", "uninstall.sh", "extension/metadata.json",
-                "src/emoji_picker/__main__.py", "systemd/gnomoji.service", "LICENSE"):
+                "src/gnomoji/__main__.py", "systemd/gnomoji.service", "LICENSE"):
         assert prefix + rel in names, rel
     assert not any("CLAUDE.local" in n for n in names)
 
@@ -256,15 +256,15 @@ def test_tarball_is_a_snapshot_with_the_installer(tarball):
 def test_builds_only_committed_files(tmp_path):
     clone = tmp_path / "clone"
     subprocess.run(["git", "clone", "-q", str(REPO), str(clone)], check=True)
-    (clone / "src/emoji_picker/leak.py").write_text("LEAK = 1\n")
-    with open(clone / "src/emoji_picker/__init__.py", "a") as f:
+    (clone / "src/gnomoji/leak.py").write_text("LEAK = 1\n")
+    with open(clone / "src/gnomoji/__init__.py", "a") as f:
         f.write("# uncommitted edit\n")
     paths = build(tmp_path / "dist", cwd=clone)
     deb = next(p for p in paths if p.suffix == ".deb")
     root = tmp_path / "root"
     subprocess.run(["dpkg-deb", "-x", str(deb), str(root)], check=True)
-    assert not (root / APP / "emoji_picker/leak.py").exists()
-    assert "uncommitted edit" not in (root / APP / "emoji_picker/__init__.py").read_text()
+    assert not (root / APP / "gnomoji/leak.py").exists()
+    assert "uncommitted edit" not in (root / APP / "gnomoji/__init__.py").read_text()
     tar = next(p for p in paths if p.name.endswith(".tar.gz"))
     with tarfile.open(tar) as t:
         assert not any(n.endswith("leak.py") for n in t.getnames())

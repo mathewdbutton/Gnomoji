@@ -1,4 +1,4 @@
-from emoji_picker.welcome import INVALID_APP, KEEP_MS, READY_WAIT_MS, ActiveCheck, Welcome, message
+from gnomoji.welcome import INVALID_APP, KEEP_MS, READY_WAIT_MS, ActiveCheck, Welcome, message
 
 
 class FakeGnome:

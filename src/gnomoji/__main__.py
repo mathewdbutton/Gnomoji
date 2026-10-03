@@ -1,4 +1,4 @@
-"""Entry point: python3 -m emoji_picker"""
+"""Entry point: python3 -m gnomoji"""
 
 import logging
 import os
@@ -33,7 +33,7 @@ from .window import PickerWindow
 
 APP_ID = "local.emojipicker.EmojiPicker"
 
-log = logging.getLogger("emoji_picker")
+log = logging.getLogger("gnomoji")
 
 
 def _schedule(ms: int, fn) -> None:
@@ -138,7 +138,7 @@ class EmojiPickerApp(Adw.Application):
 
     def do_activate(self) -> None:
         # The first activation is the service starting, so stay hidden. Later ones come
-        # from running `python3 -m emoji_picker` again, which toggles the picker.
+        # from running `python3 -m gnomoji` again, which toggles the picker.
         if self._activated:
             self._flow.toggle()
         self._activated = True

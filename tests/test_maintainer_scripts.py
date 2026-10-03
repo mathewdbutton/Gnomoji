@@ -123,7 +123,7 @@ def test_no_udev_anywhere_in_packaging():
 def test_launcher_template_runs_the_package():
     text = (PACKAGING / "gnomoji").read_text()
     assert 'export PYTHONPATH="@APPDIR@"' in text
-    assert 'exec /usr/bin/python3 -m emoji_picker "$@"' in text
+    assert 'exec /usr/bin/python3 -m gnomoji "$@"' in text
 
 
 def test_scripts_are_executable():

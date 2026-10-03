@@ -1,5 +1,5 @@
-from emoji_picker.emoji_data import Emoji
-from emoji_picker.flow import PickerFlow
+from gnomoji.emoji_data import Emoji
+from gnomoji.flow import PickerFlow
 
 POPPER = Emoji("🎉", "party popper", "Activities", ())
 

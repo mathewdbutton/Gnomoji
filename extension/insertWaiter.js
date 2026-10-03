@@ -20,7 +20,7 @@ export function decide({elapsedMs, focusBack, backForMs, imFocus}) {
 }
 
 // Insert() takes one emoji, so refuse anything that couldn't be one: the longest in
-// src/emoji_picker/data/emoji.json is 10 code points (a kiss with two skin tones), and
+// src/gnomoji/data/emoji.json is 10 code points (a kiss with two skin tones), and
 // tests/test_emoji_json.py checks they all fit. Control characters (C0, DEL, C1) never
 // appear in an emoji and could act as keys (Enter, Tab, Escape) in the target app.
 export const MAX_INSERT_CODE_POINTS = 32;

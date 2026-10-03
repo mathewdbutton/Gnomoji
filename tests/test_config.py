@@ -1,6 +1,6 @@
 import logging
 
-from emoji_picker.config import Config, Reloader, load
+from gnomoji.config import Config, Reloader, load
 
 
 def write(tmp_path, text):

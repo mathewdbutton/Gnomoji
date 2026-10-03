@@ -1,4 +1,4 @@
-"""Generate src/emoji_picker/data/emoji.json from Unicode + CLDR sources.
+"""Generate src/gnomoji/data/emoji.json from Unicode + CLDR sources.
 
 One-off, needs network:  /usr/bin/python3 tools/build_emoji_data.py
 The Unicode version is pinned to what fonts-noto-color-emoji on Ubuntu 24.04 can draw.
@@ -16,7 +16,7 @@ ANNOTATION_URLS = [
     f"{CLDR}/cldr-annotations-full/annotations/en/annotations.json",
     f"{CLDR}/cldr-annotations-derived-full/annotationsDerived/en/annotations.json",
 ]
-OUT = Path(__file__).resolve().parent.parent / "src" / "emoji_picker" / "data" / "emoji.json"
+OUT = Path(__file__).resolve().parent.parent / "src" / "gnomoji" / "data" / "emoji.json"
 
 SKIN_TONES = range(0x1F3FB, 0x1F3FF + 1)
 SKIP_GROUPS = {"Component"}

@@ -5,7 +5,7 @@ GNOME turns extensions on per person (org.gnome.shell enabled-extensions), and a
 it once only: someone who later switches it off in the Extensions app keeps it off. The
 marker is separate from 0.2.x's "welcomed", so people upgrading get it once too.
 
-`python3 -m emoji_picker.extension_setup` switches it on now (install.sh runs this);
+`python3 -m gnomoji.extension_setup` switches it on now (install.sh runs this);
 `--forget` takes it out of both lists (uninstall.sh runs this).
 """
 

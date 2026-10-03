@@ -3,8 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from emoji_picker.extension_setup import enable, enable_once, forget
-from emoji_picker.shell import UUID
+from gnomoji.extension_setup import enable, enable_once, forget
+from gnomoji.shell import UUID
 
 SRC = Path(__file__).resolve().parent.parent / "src"
 
@@ -84,7 +84,7 @@ def test_cli_never_touches_real_settings_and_reports_a_missing_schema(tmp_path):
     # schema is installed (it switched us on in memory), 1 with a message if it isn't (CI).
     env = {**os.environ, "GSETTINGS_BACKEND": "memory", "PYTHONPATH": str(SRC)}
     result = subprocess.run(
-        [sys.executable, "-m", "emoji_picker.extension_setup"],
+        [sys.executable, "-m", "gnomoji.extension_setup"],
         env=env, capture_output=True, text=True, check=False,
     )
     assert result.returncode in (0, 1), result.stderr

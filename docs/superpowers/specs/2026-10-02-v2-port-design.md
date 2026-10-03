@@ -21,10 +21,11 @@ unchanged). Full brief: `.superpowers/sdd/2026-10-02-v2-port/rename-brief.md`.
 | Visible name | "Emoji Picker" | "Gnomoji": window title, welcome notification titles, desktop entry `Name=`, extension `metadata.json` `name`/`description`, README/UNINSTALL/CLAUDE.md, install/uninstall messages |
 | Extension log prefix | `[emoji-picker]` | `[gnomoji]` |
 
-Kept unchanged: the Python package `emoji_picker`, the extension UUID
-`emoji-picker@mathewdbutton.github.io`, the app id `local.emojipicker.EmojiPicker`, the
-`~/.local/state/emoji-picker/` and `~/.config/emoji-picker/` state/config folders, and the
-repo/folder name.
+Kept unchanged: the extension UUID `emoji-picker@mathewdbutton.github.io`, the app id
+`local.emojipicker.EmojiPicker`, the `~/.local/state/emoji-picker/` and
+`~/.config/emoji-picker/` state/config folders, and the repo/folder name. (The Python package
+`emoji_picker` was kept at the time of this rename but was itself renamed to `gnomoji` on
+2026-10-03, in `src/gnomoji/`.)
 
 **Supersedes:** triggering and inserting in `2026-09-25-emoji-picker-design.md` (the clipboard
 design), and the udev parts of `2026-09-27-deb-package-design.md`. Both stay the reference for

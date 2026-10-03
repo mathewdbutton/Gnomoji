@@ -15,7 +15,7 @@ files="$(mktemp)"
 dpkg -L gnomoji > "$files"
 for f in /usr/bin/gnomoji \
          /usr/lib/systemd/user/gnomoji.service \
-         /usr/lib/gnomoji/emoji_picker/__main__.py \
+         /usr/lib/gnomoji/gnomoji/__main__.py \
          /usr/share/gnome-shell/extensions/emoji-picker@mathewdbutton.github.io/metadata.json \
          "$EXT/extension.js" \
          /usr/share/applications/local.emojipicker.EmojiPicker.desktop \
@@ -25,7 +25,7 @@ done
 if ls /usr/lib/udev/rules.d/*gnomoji* >/dev/null 2>&1; then fail "a udev rule was installed (want: no udev rule)"; fi
 [ -L "$WANTS" ] || fail "not enabled for all users ($WANTS)"
 # From /, so nothing but the installed package can be imported.
-(cd / && PYTHONPATH=/usr/lib/gnomoji /usr/bin/python3 -c 'import emoji_picker.emoji_data as d; assert d.DATA_PATH.is_file()') \
+(cd / && PYTHONPATH=/usr/lib/gnomoji /usr/bin/python3 -c 'import gnomoji.emoji_data as d; assert d.DATA_PATH.is_file()') \
     || fail "the installed package doesn't import or is missing its data"
 
 sudo apt-get remove -y gnomoji

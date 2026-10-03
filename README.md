@@ -147,6 +147,6 @@ Short version:
 uv venv --system-site-packages --python /usr/bin/python3 && uv sync
 uv run pytest -q && uv run ruff check
 packaging/build.sh                        # builds the .deb, .rpm and .tar.gz from HEAD into dist/
-.venv/bin/python -m emoji_picker.window   # preview the window; doesn't insert (steals focus!)
+.venv/bin/python -m gnomoji.window   # preview the window; doesn't insert (steals focus!)
 /usr/bin/python3 tools/build_emoji_data.py  # regenerate emoji.json (network)
 ```

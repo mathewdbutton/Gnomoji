@@ -69,11 +69,11 @@ fi
 
 echo "Installing into your home folder..."
 # Replace, not merge: files removed in a newer version mustn't linger.
-rm -rf "$APP_DIR/emoji_picker" "$EXT_DIR"
+rm -rf "$APP_DIR/gnomoji" "$EXT_DIR"
 mkdir -p "$APP_DIR" "$EXT_DIR" "$UNIT_DIR" "$BIN_DIR" "$DATA_DIR/applications" \
     "$DATA_DIR/icons/hicolor/scalable/apps"
-cp -r "$SRC/src/emoji_picker" "$APP_DIR/"
-find "$APP_DIR/emoji_picker" -name __pycache__ -type d -prune -exec rm -rf {} +
+cp -r "$SRC/src/gnomoji" "$APP_DIR/"
+find "$APP_DIR/gnomoji" -name __pycache__ -type d -prune -exec rm -rf {} +
 cp "$SRC"/extension/*.js "$SRC/extension/metadata.json" "$EXT_DIR/"
 install -m 755 "$SRC/uninstall.sh" "$APP_DIR/uninstall.sh"
 
@@ -90,7 +90,7 @@ cp "$SRC/desktop/$APP_ID.svg" "$DATA_DIR/icons/hicolor/scalable/apps/"
 touch "$DATA_DIR/icons/hicolor"
 fill "$SRC/systemd/gnomoji.service" "$UNIT_DIR/gnomoji.service"
 
-if ! PYTHONPATH="$APP_DIR" PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -m emoji_picker.extension_setup; then
+if ! PYTHONPATH="$APP_DIR" PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -m gnomoji.extension_setup; then
     printf "! Couldn't switch the extension on. Turn on Gnomoji in the Extensions app.\n"
 fi
 systemctl --user daemon-reload

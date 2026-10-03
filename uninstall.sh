@@ -15,8 +15,8 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/emoji-picker"
 PACKAGE_UNIT=/usr/lib/systemd/user/gnomoji.service
 
 gnome-extensions disable "$UUID" 2>/dev/null || true
-if [ -d "$APP_DIR/emoji_picker" ]; then
-    PYTHONPATH="$APP_DIR" /usr/bin/python3 -m emoji_picker.extension_setup --forget 2>/dev/null || true
+if [ -d "$APP_DIR/gnomoji" ]; then
+    PYTHONPATH="$APP_DIR" /usr/bin/python3 -m gnomoji.extension_setup --forget 2>/dev/null || true
 fi
 # It's out of enabled-extensions now, so forget that the app switched it on: a .deb or .rpm
 # (now or later) then switches it on again at its first start.
