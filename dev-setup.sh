@@ -84,21 +84,22 @@ if [ "${#missing[@]}" -gt 0 ]; then
         exit 1
     fi
 
-    echo
-    printf 'This will run:\n  %s\n\n' "$cmd"
-    printf 'Install these packages? [Y/n] '
-    if read -r reply < /dev/tty 2>/dev/null; then
-        case "$reply" in
-            ""|[Yy]*) ;;
-            *)
-                echo "Not installing. Run that command yourself, then re-run ./dev-setup.sh." >&2
-                exit 1 ;;
-        esac
-    else
+    if ! (: </dev/tty) 2>/dev/null; then
         printf '\nNo terminal to ask on. Run this yourself, then re-run ./dev-setup.sh:\n  %s\n' \
             "$cmd" >&2
         exit 1
     fi
+
+    echo
+    printf 'This will run:\n  %s\n\n' "$cmd"
+    printf 'Install these packages? [Y/n] '
+    read -r reply < /dev/tty
+    case "$reply" in
+        ""|[Yy]*) ;;
+        *)
+            echo "Not installing. Run that command yourself, then re-run ./dev-setup.sh." >&2
+            exit 1 ;;
+    esac
     eval "$cmd"
 fi
 
