@@ -1,4 +1,4 @@
-# Packages the tree packaging/build.sh has already laid out (passed as %{stage});
+# Packages the tree packaging/build.sh has already laid out (passed in as the stage macro);
 # build.sh calls rpmbuild with --define "stage ..." --define "pkgversion ...".
 Name:           emoji-picker
 Version:        %{pkgversion}
