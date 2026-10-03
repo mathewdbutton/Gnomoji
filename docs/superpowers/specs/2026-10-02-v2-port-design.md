@@ -249,3 +249,21 @@ In order:
 - Pages that drop focus when the window changes (e.g. DuckDuckGo's search box) lose the insert.
 - GNOME on Wayland only. Each new GNOME release needs `metadata.json` updated (and a check).
 - A first install, by any route, needs one log-out before the double-tap works.
+
+## Acceptance results (2026-10-03)
+
+| # | Check | Result | Notes |
+|---|---|---|---|
+| 1 | GNOME 50: Fedora 44 Workstation VM, `install.sh` from a tarball | PASS | GNOME Shell 50.0; no extra packages needed; extension ACTIVE after one log-out; picks into Text Editor and Firefox; right-Shift capitals don't open it. |
+| 2 | Ubuntu 24.04 `.deb`, clean install | PASS | "Log out once" welcome; after log-out the extension loads from `/usr/share/gnome-shell/extensions/`. (A first try straight over 0.2.1 showed "ready": GNOME still held the removed v2 test extension in memory. A clean reinstall after a log-out behaved as designed.) |
+| 3 | Ubuntu picks | PASS | Instant in Text Editor, Firefox (fresh box, second box) and Slack: the old Firefox first-insert delay is gone. |
+| 4 | Ubuntu picker features | PASS | Skin tone list, Clear, Esc, click-away, right-Shift capitals, clipboard untouched after a pick. The package ships no udev rule. |
+| 5 | Fedora 44 `.rpm` | PASS | Installed as a local file through GNOME Software (shows "Potentially Unsafe / Provided by a third party", as for any side-loaded package); welcome shown; picks work. `dnf remove gnomoji` leaves no `/usr/lib/gnomoji`. |
+| 6 | Tarball route on Ubuntu | Skipped | Same `install.sh`, covered by check 1 and the install-script tests. |
+
+Found during acceptance: Fedora already ships a package called `emoji-picker` (the
+ibus-typing-booster picker), which shadowed ours in GNOME Software and would have clashed on
+`/usr/bin/emoji-picker`. Hence the rename to Gnomoji (see the note at the top).
+
+Follow-ups (not in 0.3.0): AppStream metadata so GNOME Software shows the name "Gnomoji" and the
+🤏 icon instead of "gnomoji" and a generic gear; possibly systemd sandboxing for the app's service.
