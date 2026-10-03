@@ -57,7 +57,10 @@ never in this file.
   starts the package's service if a `.deb`/`.rpm` is installed too. Right after `enable_once`,
   GNOME Shell may not have turned the extension on yet, so the welcome's "ready or log out?"
   check (`welcome.ActiveCheck`) waits up to 3 s for `Ready` before asking for a log-out.
-- **GNOME 50** (e.g. Fedora 44, Ubuntu 26.04): not yet checked by hand (pending).
+- **GNOME 50 works** (checked by hand 2026-10-03, Fedora 44 Workstation in a VM, GNOME Shell
+  50.0): `install.sh` from a tarball needed no extra packages, the extension came up ACTIVE after
+  one log-out, the locate-pointer trigger still works, picks went into Text Editor and Firefox,
+  and right-Shift capitals don't open the picker. GNOME 47-49 untested.
 - **GNOME needs ~6 s to notice a new desktop file** (measured, GNOME 46). Until then
   `org.gtk.Notifications.AddNotification` fails with `InvalidApp` and the notification is lost;
   `Gio.Application.send_notification` hides that error. So the welcome goes over D-Bus directly

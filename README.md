@@ -7,8 +7,8 @@ picker itself.
 
 ## Requirements
 
-- **GNOME 46-50 on Wayland.** Tested on Ubuntu 24.04 (GNOME 46). GNOME 47-50 (for example
-  Fedora 44, Ubuntu 26.04) is supported but not yet tested by hand.
+- **GNOME 46-50 on Wayland.** Tested on Ubuntu 24.04 (GNOME 46) and Fedora 44 (GNOME 50).
+  GNOME 47-49 should work too but haven't been tested by hand.
 - Python 3.11+ with GTK 4, libadwaita and the Noto Color Emoji font. All of this is standard on
   an Ubuntu or Fedora GNOME desktop already.
 
