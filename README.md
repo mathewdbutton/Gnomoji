@@ -20,7 +20,7 @@ differs.
 ### Ubuntu/Debian (.deb)
 
 Download `gnomoji_<version>_all.deb` from the
-[latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest) and
+[latest release](https://github.com/mathewdbutton/Gnomoji/releases/latest) and
 double-click it. App Center opens; click **Install**. It warns that the package comes from
 outside the Ubuntu store: that's expected for a download like this.
 
@@ -29,7 +29,7 @@ Prefer a terminal? `sudo apt install ./gnomoji_<version>_all.deb`
 ### Fedora (.rpm)
 
 Download `gnomoji-<version>-1.noarch.rpm` from the
-[latest release](https://github.com/mathewdbutton/emoji-picker/releases/latest), then:
+[latest release](https://github.com/mathewdbutton/Gnomoji/releases/latest), then:
 
 ```bash
 sudo dnf install ./gnomoji-<version>-1.noarch.rpm

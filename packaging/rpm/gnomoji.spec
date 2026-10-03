@@ -5,7 +5,7 @@ Version:        %{pkgversion}
 Release:        1
 Summary:        Gnomoji: double-tap right Shift to pick an emoji, for GNOME
 License:        MIT
-URL:            https://github.com/mathewdbutton/emoji-picker
+URL:            https://github.com/mathewdbutton/Gnomoji
 BuildArch:      noarch
 AutoReqProv:    no
 Requires:       python3 >= 3.11, python3-gobject, gtk4, libadwaita, google-noto-color-emoji-fonts, gnome-shell >= 46

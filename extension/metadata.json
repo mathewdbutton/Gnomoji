@@ -3,5 +3,5 @@
   "name": "Gnomoji",
   "description": "Double-tap right Shift in a text field to pick an emoji. Needs the Gnomoji app from the same repository.",
   "shell-version": ["46", "47", "48", "49", "50"],
-  "url": "https://github.com/mathewdbutton/emoji-picker"
+  "url": "https://github.com/mathewdbutton/Gnomoji"
 }

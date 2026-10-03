@@ -6,7 +6,7 @@ Installed-Size: @INSTALLED_SIZE@
 Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, fonts-noto-color-emoji, gnome-shell (>= 46)
 Section: utils
 Priority: optional
-Homepage: https://github.com/mathewdbutton/emoji-picker
+Homepage: https://github.com/mathewdbutton/Gnomoji
 Description: Gnomoji: double-tap right Shift to pick an emoji, for GNOME
  Double-tap right Shift in a text field to open Gnomoji. Search or
  browse, press Enter, and the emoji is typed in. A small GNOME Shell extension

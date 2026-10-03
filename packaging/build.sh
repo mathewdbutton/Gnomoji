@@ -44,7 +44,7 @@ install -D -m 644 "$src/desktop/$APP_ID.svg" "$root/usr/share/icons/hicolor/scal
 doc="$root/usr/share/doc/gnomoji"
 install -d "$doc"
 {
-    echo "Gnomoji: https://github.com/mathewdbutton/emoji-picker"
+    echo "Gnomoji: https://github.com/mathewdbutton/Gnomoji"
     echo
     echo "The icon is the pinching hand emoji from Noto Emoji, Copyright Google LLC, under the"
     echo "Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)."
@@ -64,7 +64,7 @@ chmod 755 "$root/usr/bin/gnomoji" "$root$APP/enable-for-everyone" "$root$APP/dis
 # --- .deb -------------------------------------------------------------------------------
 deb_root="$work/deb"
 cp -a "$root" "$deb_root"
-printf 'gnomoji (%s) unstable; urgency=medium\n\n  * Release %s: https://github.com/mathewdbutton/emoji-picker/releases\n\n -- %s  %s\n' \
+printf 'gnomoji (%s) unstable; urgency=medium\n\n  * Release %s: https://github.com/mathewdbutton/Gnomoji/releases\n\n -- %s  %s\n' \
     "$version" "$version" "$maintainer" "$(git -C "$REPO" log -1 --format=%cD)" \
     | gzip -9n > "$deb_root/usr/share/doc/gnomoji/changelog.gz"
 chmod 644 "$deb_root/usr/share/doc/gnomoji/changelog.gz"
