@@ -167,7 +167,7 @@ run the tests:
 | Noto Color Emoji, fontconfig | emoji glyphs; `fc-list`/`fc-match` used by the tests | `fonts-noto-color-emoji fontconfig` |
 | `gjs` | runs the extension's JS unit tests | `gjs` |
 | `git` | packaging archives from `git archive`; some tests clone the repo | `git` |
-| `dpkg-deb` | building/inspecting the `.deb` | `dpkg-dev` |
+| `dpkg-deb` | building/inspecting the `.deb` | `dpkg` |
 | `rpmbuild`, `rpm` | building/inspecting the `.rpm` | `rpm` |
 | `shellcheck` | lints every shell script in the repo | `shellcheck` |
 | [`uv`](https://docs.astral.sh/uv/) | manages `.venv`, runs pytest/ruff | not packaged; `curl -LsSf https://astral.sh/uv/install.sh \| sh` |

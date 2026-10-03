@@ -48,7 +48,7 @@ declare -A APT_PKGS=(
     [font]="fonts-noto-color-emoji fontconfig"
     [gjs]="gjs"
     [git]="git"
-    [dpkg_deb]="dpkg-dev"
+    [dpkg_deb]="dpkg"
     [rpm]="rpm"
     [shellcheck]="shellcheck"
 )

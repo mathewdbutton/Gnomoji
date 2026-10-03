@@ -94,7 +94,7 @@ fi
 tarball="$OUT/gnomoji-${version}.tar.gz"
 tarball_paths=(
     install.sh uninstall.sh src/gnomoji extension systemd
-    desktop/$APP_ID.desktop desktop/$APP_ID.svg
+    "desktop/$APP_ID.desktop" "desktop/$APP_ID.svg"
     packaging/gnomoji README.md UNINSTALL.md LICENSE
 )
 git -C "$REPO" archive --format=tar.gz --prefix="gnomoji-${version}/" -o "$tarball" \

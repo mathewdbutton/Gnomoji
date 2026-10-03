@@ -60,6 +60,11 @@ def run(tmp_path, bin_dir):
         result = subprocess.run(
             [BASH, str(SCRIPT)], env=env, capture_output=True, text=True,
             check=False, stdin=subprocess.DEVNULL,
+            # stdin=DEVNULL alone doesn't detach the controlling terminal: without this, a
+            # real terminal running this test would have dev-setup.sh's `read ... < /dev/tty`
+            # block on the user's keyboard (the prompt itself is swallowed by capture_output).
+            # A new session has no controlling tty, so /dev/tty reliably fails to open instead.
+            start_new_session=True,
         )
         return result, log.read_text().splitlines()
 
@@ -101,7 +106,7 @@ def test_dev_setup_only_lists_the_missing_packages(run):
     result, calls = run(missing=("shellcheck",))
     output = result.stdout + result.stderr
     assert "shellcheck" in output
-    for present in ("gjs", "rpm-build", "fonts-noto-color-emoji", "dpkg-dev"):
+    for present in ("gjs", "rpm", "fonts-noto-color-emoji", "dpkg"):
         assert present not in output
     assert not any(c.startswith(("apt-get", "sudo")) for c in calls)
 
