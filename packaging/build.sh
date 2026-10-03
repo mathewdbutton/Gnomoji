@@ -80,7 +80,7 @@ echo "$deb"
 # --- .rpm -------------------------------------------------------------------------------
 if command -v rpmbuild >/dev/null; then
     rpmbuild --quiet -bb --define "_topdir $work/rpm" --define "stage $root" \
-        --define "pkgversion $version" "$HERE/rpm/emoji-picker.spec" >/dev/null
+        --define "pkgversion $version" "$HERE/rpm/gnomoji.spec" >/dev/null
     rpm="$OUT/gnomoji-${version}-1.noarch.rpm"
     cp "$work/rpm/RPMS/noarch/gnomoji-${version}-1.noarch.rpm" "$rpm"
     echo "$rpm"

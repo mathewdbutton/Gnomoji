@@ -29,7 +29,7 @@ exit 0
 """
 
 ALICE = "systemctl --user --machine=alice@.host"
-SPEC = PACKAGING / "rpm" / "emoji-picker.spec"
+SPEC = PACKAGING / "rpm" / "gnomoji.spec"
 
 
 @pytest.fixture
