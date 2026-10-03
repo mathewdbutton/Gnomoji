@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck python3-pytest python3-gi gir1.2-gtk-4.0 \
-            gir1.2-adw-1 gjs rpm fonts-noto-color-emoji
+            gir1.2-adw-1 gjs rpm fonts-noto-color-emoji fontconfig
 
       - name: Tests
         run: python3 -m pytest -q -p no:cacheprovider

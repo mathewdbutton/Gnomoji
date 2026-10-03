@@ -3,7 +3,6 @@ gnome-shell, gsettings and fc-list (fixtures and paths() in conftest.py, shared 
 tests/test_package.py). GSETTINGS_BACKEND=memory keeps the real dconf untouched."""
 
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -194,8 +193,3 @@ def test_uninstall_finishes_without_a_user_bus(run, home):
     for name, path in p.items():
         assert not path.exists(), name
     assert "Gnomoji removed." in result.stdout
-
-
-@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
-def test_scripts_pass_shellcheck():
-    subprocess.run(["shellcheck", str(REPO / "install.sh"), str(REPO / "uninstall.sh")], check=True)

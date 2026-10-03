@@ -4,7 +4,6 @@ import gzip
 import json
 import os
 import re
-import shutil
 import subprocess
 import tarfile
 import tomllib
@@ -12,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import paths  # bin_dir, home, run fixtures come from conftest.py automatically
+from conftest import paths, require  # bin_dir, home, run fixtures come from conftest.py
 
 REPO = Path(__file__).resolve().parent.parent
 BUILD = REPO / "packaging" / "build.sh"
@@ -52,13 +51,6 @@ UNWANTED = re.compile(
     r"(^|/)(tests|docs|tools|spike|packaging|udev|\.superpowers|__pycache__)(/|$)|CLAUDE|\.pyc$"
 )
 
-needs_deb = pytest.mark.skipif(
-    not (shutil.which("dpkg-deb") and shutil.which("git")), reason="needs dpkg-deb and git"
-)
-needs_rpm = pytest.mark.skipif(
-    not (shutil.which("rpmbuild") and shutil.which("rpm")), reason="needs rpmbuild and rpm"
-)
-
 
 def version() -> str:
     with open(REPO / "pyproject.toml", "rb") as f:
@@ -85,6 +77,7 @@ def build(out: Path, cwd: Path = REPO, env: dict[str, str] | None = None) -> lis
 
 @pytest.fixture(scope="module")
 def dist(tmp_path_factory):
+    require("dpkg-deb", "git")  # build.sh always builds the .deb, and archives via git
     out = tmp_path_factory.mktemp("dist")
     build(out)
     return out
@@ -111,7 +104,6 @@ def deb_field(deb: Path, name: str) -> str:
 # --- .deb ----------------------------------------------------------------------------
 
 
-@needs_deb
 def test_deb_name_and_fields(deb):
     assert deb.is_file()
     assert deb_field(deb, "Package") == "gnomoji"
@@ -121,7 +113,6 @@ def test_deb_name_and_fields(deb):
     assert "clipboard" not in deb_field(deb, "Description").replace("never touches the clipboard", "")
 
 
-@needs_deb
 def test_deb_depends_match_install_sh(deb):
     depends = [d.strip() for d in deb_field(deb, "Depends").split(",")]
     assert depends[0] == "python3 (>= 3.11)"
@@ -129,19 +120,16 @@ def test_deb_depends_match_install_sh(deb):
     assert sorted(re.sub(r" \(.*\)", "", d) for d in depends[1:]) == package_names("APT_PACKAGES")
 
 
-@needs_deb
 def test_deb_files_are_where_the_spec_says(deb_root):
     for rel in INSTALLED_FILES:
         assert (deb_root / rel).is_file(), rel
     assert (deb_root / DOC / "changelog.gz").is_file()
 
 
-@needs_deb
 def test_deb_ships_no_udev_rule(deb_root):
     assert not list(deb_root.rglob("*.rules"))
 
 
-@needs_deb
 def test_deb_whole_python_package_is_included(deb_root):
     tracked = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD", "src/gnomoji"],
                              cwd=REPO, check=True, capture_output=True, text=True).stdout.split()
@@ -150,7 +138,6 @@ def test_deb_whole_python_package_is_included(deb_root):
         assert (deb_root / APP / rel).is_file(), path
 
 
-@needs_deb
 def test_deb_service_desktop_and_launcher_use_the_app_folder(deb_root):
     service = (deb_root / SERVICE).read_text()
     assert f'Environment="PYTHONPATH=/{APP}"' in service
@@ -163,14 +150,12 @@ def test_deb_service_desktop_and_launcher_use_the_app_folder(deb_root):
         assert "@APPDIR@" not in (deb_root / rel).read_text(), rel
 
 
-@needs_deb
 def test_deb_extension_metadata(deb_root):
     meta = json.loads((deb_root / EXT / "metadata.json").read_text())
     assert meta["uuid"] == UUID
     assert meta["shell-version"] == ["46", "47", "48", "49", "50"]
 
 
-@needs_deb
 def test_deb_modes_and_owners(deb, deb_root):
     for rel in ["usr/bin/gnomoji", f"{APP}/enable-for-everyone", f"{APP}/disable-for-everyone",
                 "DEBIAN/postinst", "DEBIAN/prerm"]:
@@ -183,7 +168,6 @@ def test_deb_modes_and_owners(deb, deb_root):
         assert mode[5] != "w" and mode[8] != "w", line
 
 
-@needs_deb
 def test_deb_nothing_unwanted(deb_root):
     for path in deb_root.rglob("*"):
         rel = path.relative_to(deb_root).as_posix()
@@ -192,7 +176,6 @@ def test_deb_nothing_unwanted(deb_root):
         assert not UNWANTED.search(rel.replace(APP, "APP")), rel
 
 
-@needs_deb
 def test_deb_copyright_and_changelog(deb_root):
     text = (deb_root / DOC / "copyright").read_text()
     assert "MIT License" in text and "Apache" in text and "Unicode" in text
@@ -210,16 +193,15 @@ def rpm_query(rpm: Path, *args: str) -> str:
 
 @pytest.fixture(scope="module")
 def rpm(dist):
+    require("rpmbuild", "rpm")
     return dist / f"gnomoji-{version()}-1.noarch.rpm"
 
 
-@needs_rpm
 def test_rpm_name_and_version(rpm):
     assert rpm.is_file()
     assert rpm_query(rpm, "--qf", "%{NAME} %{VERSION} %{ARCH}") == f"gnomoji {version()} noarch"
 
 
-@needs_rpm
 def test_rpm_requires_match_install_sh(rpm):
     requires = [r.strip() for r in rpm_query(rpm, "--requires").splitlines()
                 if not r.startswith("rpmlib(") and not r.startswith("/bin/sh")]
@@ -229,7 +211,6 @@ def test_rpm_requires_match_install_sh(rpm):
     assert names == package_names("DNF_PACKAGES")
 
 
-@needs_rpm
 def test_rpm_has_the_same_files_as_the_deb(rpm, deb_root):
     rpm_files = {f.lstrip("/") for f in rpm_query(rpm, "--list").split()}
     for rel in INSTALLED_FILES:
@@ -237,7 +218,6 @@ def test_rpm_has_the_same_files_as_the_deb(rpm, deb_root):
     assert not any(f.endswith(".rules") for f in rpm_files)
 
 
-@needs_rpm
 def test_rpm_scripts_enable_and_disable(rpm):
     scripts = rpm_query(rpm, "--scripts")
     assert "/usr/lib/gnomoji/enable-for-everyone" in scripts
@@ -318,8 +298,8 @@ def test_tarball_installs_with_install_sh(tarball, tmp_path, run, home):
 # --- all formats -------------------------------------------------------------------------
 
 
-@needs_deb
 def test_builds_only_committed_files(tmp_path):
+    require("dpkg-deb", "git")
     clone = tmp_path / "clone"
     subprocess.run(["git", "clone", "-q", str(REPO), str(clone)], check=True)
     (clone / "src/gnomoji/leak.py").write_text("LEAK = 1\n")
@@ -342,8 +322,8 @@ def test_build_work_folder_ignores_tmpdir():
     assert 'work="$(mktemp -d /tmp/gnomoji-build.XXXXXX)"' in BUILD.read_text()
 
 
-@needs_deb
 def test_builds_with_spaces_in_tmpdir(tmp_path):
+    require("dpkg-deb", "git")
     tmp = tmp_path / "temp dir"
     tmp.mkdir()
     paths = build(tmp_path / "dist", env={**os.environ, "TMPDIR": str(tmp)})

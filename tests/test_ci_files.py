@@ -1,10 +1,6 @@
 """Static checks on the CI workflow and smoke tests (they only run on GitHub)."""
 
-import shutil
-import subprocess
 from pathlib import Path
-
-import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO / ".github" / "workflows" / "package.yml"
@@ -39,8 +35,3 @@ def test_smoke_tests_check_the_extension_and_no_udev_rule():
         assert "PYTHONPATH=/usr/lib/gnomoji" in text
         assert "want: no udev rule" in text
         assert script.stat().st_mode & 0o111
-
-
-@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
-def test_smoke_tests_pass_shellcheck():
-    subprocess.run(["shellcheck", *map(str, SMOKE)], check=True)

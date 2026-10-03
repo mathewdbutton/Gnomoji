@@ -6,9 +6,9 @@ machine. The bundled fonts.conf hides that file from fontconfig for our process 
 """
 
 import os
-import shutil
 import subprocess
 
+from conftest import require
 from gnomoji.fonts import BUNDLED_CONF, use_fast_emoji_font
 
 
@@ -33,10 +33,7 @@ def test_bundled_conf_includes_system_fonts_conf():
 
 
 def test_bundled_conf_hides_vector_noto_color_emoji_from_fc_match():
-    if shutil.which("fc-match") is None:
-        import pytest
-
-        pytest.skip("fc-match not installed")
+    require("fc-match")
     result = subprocess.run(
         ["fc-match", "Noto Color Emoji", "file"],
         env={**os.environ, "FONTCONFIG_FILE": str(BUNDLED_CONF)},

@@ -1,7 +1,6 @@
 """The shared enable/disable scripts run against fake systemctl and loginctl; the .deb and .rpm scriptlets are checked as text."""
 
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -130,10 +129,3 @@ def test_scripts_are_executable():
     for rel in ("enable-for-everyone", "disable-for-everyone", "deb/postinst", "deb/prerm",
                 "gnomoji", "build.sh"):
         assert (PACKAGING / rel).stat().st_mode & 0o111, rel
-
-
-@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
-def test_scripts_pass_shellcheck():
-    scripts = ["enable-for-everyone", "disable-for-everyone", "deb/postinst", "deb/prerm",
-               "gnomoji", "build.sh"]
-    subprocess.run(["shellcheck", *(str(PACKAGING / s) for s in scripts)], check=True)

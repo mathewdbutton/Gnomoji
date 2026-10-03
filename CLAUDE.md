@@ -100,12 +100,19 @@ never in this file.
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 207 tests, lint (ruff flags unused noqa, RUF100)
+./dev-setup.sh                                   # one-command setup: packages (Ubuntu/Debian
+                                                  # asks first), .venv, runs the tests once
+uv run pytest -q && uv run ruff check            # 214 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m gnomoji   # foreground run; inserts only with the extension installed
 .venv/bin/python -m gnomoji.window          # window preview; doesn't insert (steals focus!)
 journalctl --user -u gnomoji -f                  # service logs, once installed
 packaging/build.sh                               # .deb, .rpm, .tar.gz from HEAD into dist/ (.rpm needs rpm installed)
 ```
+
+**No skipped tests over a missing tool.** Every test that needs an external tool (`gjs`,
+`shellcheck`, `dpkg-deb`/`git`, `rpmbuild`/`rpm`, `fc-match`) calls `tests/conftest.py`'s
+`require(*tools)`, which fails (not skips) with "run ./dev-setup.sh" when one is missing. If
+`uv run pytest` ever shows a skip again, that's a regression to fix, not ignore.
 
 Runtime uses **only** `/usr/bin/python3` plus distro packages. `.venv` (uv, `--system-site-packages`)
 is for pytest/ruff only. No pip packages at runtime. A source install (`./install.sh`) copies the

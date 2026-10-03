@@ -145,12 +145,33 @@ Short version:
   one (e.g. from `/usr/local/share/fonts`, then `fc-cache -f`) fixes it for every app. The
   picker already hides that font for itself only, so its own picks are never slow.
 
-## Development
+## Developing
 
 ```bash
-uv venv --system-site-packages --python /usr/bin/python3 && uv sync
-uv run pytest -q && uv run ruff check
-packaging/build.sh                        # builds the .deb, .rpm and .tar.gz from HEAD into dist/
-.venv/bin/python -m gnomoji.window   # preview the window; doesn't insert (steals focus!)
+./dev-setup.sh                              # one-time: installs what's missing (Ubuntu/Debian
+                                             # asks first), sets up .venv, runs the test suite
+uv run pytest -q && uv run ruff check       # tests + lint (a missing tool fails the run, it
+                                             # doesn't skip; re-run ./dev-setup.sh to fix that)
+packaging/build.sh                          # builds the .deb, .rpm and .tar.gz from HEAD into dist/
+.venv/bin/python -m gnomoji.window          # preview the window; doesn't insert (steals focus!)
 /usr/bin/python3 tools/build_emoji_data.py  # regenerate emoji.json (network)
 ```
+
+`dev-setup.sh` only automates installing packages on Ubuntu/Debian (`apt`). On another distro,
+install the equivalent of these yourself, then run `./dev-setup.sh` again to set up `.venv` and
+run the tests:
+
+| Tool | What it's for | Ubuntu/Debian package(s) |
+|---|---|---|
+| Python 3.12+, GTK 4, libadwaita | the app itself, importable by `/usr/bin/python3` | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1` |
+| Noto Color Emoji, fontconfig | emoji glyphs; `fc-list`/`fc-match` used by the tests | `fonts-noto-color-emoji fontconfig` |
+| `gjs` | runs the extension's JS unit tests | `gjs` |
+| `git` | packaging archives from `git archive`; some tests clone the repo | `git` |
+| `dpkg-deb` | building/inspecting the `.deb` | `dpkg-dev` |
+| `rpmbuild`, `rpm` | building/inspecting the `.rpm` | `rpm` |
+| `shellcheck` | lints every shell script in the repo | `shellcheck` |
+| [`uv`](https://docs.astral.sh/uv/) | manages `.venv`, runs pytest/ruff | not packaged; `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+
+`.venv` is for `pytest`/`ruff` only, created with `uv venv --system-site-packages` so it can
+still import the distro's PyGObject/libadwaita; the app itself only ever runs on
+`/usr/bin/python3` with no pip packages at runtime.

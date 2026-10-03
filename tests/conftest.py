@@ -2,10 +2,20 @@
 gsettings and fc-list, used by tests/test_install_scripts.py and tests/test_package.py.
 GSETTINGS_BACKEND=memory keeps the real dconf untouched."""
 
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+
+def require(*tools: str) -> None:
+    """Fail (never skip) a test that needs one of these tools on PATH. Tests assume
+    ./dev-setup.sh has been run, so a missing tool is a failure to fix, not something to
+    quietly skip over."""
+    missing = [tool for tool in tools if shutil.which(tool) is None]
+    if missing:
+        pytest.fail(f"missing {', '.join(missing)}: run ./dev-setup.sh")
 
 UUID = "emoji-picker@mathewdbutton.github.io"
 APP_ID = "local.emojipicker.EmojiPicker"
