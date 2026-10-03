@@ -52,10 +52,12 @@ It checks what's missing and prints the `apt`/`dnf` command for it if so (it nev
 notification tells you if this is needed. After that, double-tap right Shift in a text field.
 
 **Updating:** install the newer `.deb`, `.rpm` or tarball the same way (re-run `install.sh`
-for the tarball).
+for the tarball), then log out and back in: GNOME loads the new version of the extension only
+at log-in.
 
 Don't mix a package with `install.sh` on the same machine: the home-folder copy from
-`install.sh` wins over the package's.
+`install.sh` wins over the package's. To switch from `install.sh` to a package, run its
+`uninstall.sh` (it hands over to the package if that's already installed).
 
 ### From source
 

@@ -12,13 +12,15 @@ REPO = Path(__file__).resolve().parent.parent
 UUID = "emoji-picker@mathewdbutton.github.io"
 APP_ID = "local.emojipicker.EmojiPicker"
 
+# FAKE_FAIL: a program name that fails every call (e.g. systemctl with no user bus).
 FAKE = r"""#!/bin/sh
 echo "$(basename "$0") $*" >> "$FAKE_LOG"
+[ "$(basename "$0")" = "${FAKE_FAIL:-}" ] && exit 1
 case "$(basename "$0") $*" in
     "gnome-shell --version") echo "GNOME Shell 46.0" ;;
     "fc-list Noto Color Emoji") echo "/usr/share/fonts/NotoColorEmoji.ttf: Noto Color Emoji:style=Regular" ;;
     "gsettings get org.gnome.mutter locate-pointer-key") echo "'Shift_R'" ;;
-    "gnome-extensions info "*) echo "  State: INACTIVE" ;;
+    "gnome-extensions info "*) echo "  State: ${FAKE_EXT_STATE:-INACTIVE}" ;;
 esac
 exit 0
 """
@@ -33,15 +35,20 @@ def home(tmp_path):
 
 
 @pytest.fixture
-def run(tmp_path, home):
+def bin_dir(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     for name in ("systemctl", "gnome-extensions", "gnome-shell", "gsettings", "fc-list"):
         (bin_dir / name).write_text(FAKE)
         (bin_dir / name).chmod(0o755)
+    return bin_dir
+
+
+@pytest.fixture
+def run(tmp_path, home, bin_dir):
     log = tmp_path / "calls.log"
 
-    def run(script: Path, *args):
+    def run(script: Path, *args, **extra_env):
         log.write_text("")
         env = {
             "PATH": f"{bin_dir}:/usr/bin:/bin",
@@ -49,6 +56,7 @@ def run(tmp_path, home):
             "FAKE_LOG": str(log),
             "GSETTINGS_BACKEND": "memory",
             "XDG_SESSION_TYPE": "wayland",
+            **extra_env,
         }
         result = subprocess.run(
             ["bash", str(script), *args], env=env, capture_output=True, text=True,
@@ -156,6 +164,88 @@ def test_uninstall_keeps_state_and_config_unless_purged(run, home):
     run(REPO / "install.sh")
     run(paths(home)["app"] / "uninstall.sh", "--purge")
     assert not state.exists() and not config.exists()
+
+
+def test_install_refuses_to_run_as_root(run, home, bin_dir):
+    (bin_dir / "id").write_text('#!/bin/sh\n[ "$1" = "-u" ] && echo 0 || /usr/bin/id "$@"\n')
+    (bin_dir / "id").chmod(0o755)
+    result, calls = run(REPO / "install.sh")
+    assert result.returncode != 0
+    assert "without sudo" in result.stdout + result.stderr
+    assert not (home / ".local").exists()
+    assert calls == []
+
+
+@pytest.mark.parametrize("char", ["%", '"', "$", "`", "\\"])
+def test_install_refuses_a_data_folder_the_templates_cant_hold(run, home, char):
+    data = home / f"odd{char}data"
+    result, calls = run(REPO / "install.sh", XDG_DATA_HOME=str(data))
+    assert result.returncode != 0
+    assert "can't install into" in (result.stdout + result.stderr).lower()
+    assert not data.exists()
+    assert not any(c.startswith("systemctl") for c in calls)
+
+
+def test_install_allows_spaces_and_sed_specials_in_the_data_folder(run, home):
+    data = home / "my data & | stuff"
+    result, _ = run(REPO / "install.sh", XDG_DATA_HOME=str(data))
+    assert result.returncode == 0, result.stdout + result.stderr
+    unit = (home / ".config" / "systemd" / "user" / "emoji-picker.service").read_text()
+    assert f'Environment="PYTHONPATH={data / "emoji-picker"}"' in unit
+
+
+def test_update_mentions_logging_out_to_load_the_new_extension(run):
+    result, _ = run(REPO / "install.sh", FAKE_EXT_STATE="ACTIVE")
+    assert result.returncode == 0
+    assert "Done!" in result.stdout
+    assert "If this was an update, log out and back in to load the new version." in result.stdout
+
+
+def test_uninstall_forgets_the_switched_on_marker(run, home):
+    # Else a later .deb/.rpm sees the marker and never switches the extension back on.
+    state = home / ".local" / "state" / "emoji-picker"
+    state.mkdir(parents=True)
+    (state / "extension-enabled").write_text("")
+    (state / "recent.json").write_text("[]")
+    run(REPO / "install.sh")
+    result, _ = run(paths(home)["app"] / "uninstall.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (state / "extension-enabled").exists()
+    assert (state / "recent.json").exists()
+
+
+def uninstaller_with_package_unit(tmp_path: Path, unit: Path) -> Path:
+    """uninstall.sh, looking for the package's unit at `unit` instead of /usr/lib."""
+    text = (REPO / "uninstall.sh").read_text()
+    line = "PACKAGE_UNIT=/usr/lib/systemd/user/emoji-picker.service"
+    assert line in text
+    script = tmp_path / "uninstall-test.sh"
+    script.write_text(text.replace(line, f'PACKAGE_UNIT="{unit}"'))
+    return script
+
+
+def test_uninstall_hands_over_to_an_installed_package(run, tmp_path):
+    unit = tmp_path / "package.service"
+    unit.write_text("")
+    _, calls = run(uninstaller_with_package_unit(tmp_path, unit))
+    reload, start = "systemctl --user daemon-reload", "systemctl --user start emoji-picker"
+    assert start in calls
+    assert calls.index(reload) < calls.index(start)
+
+
+def test_uninstall_starts_nothing_without_a_package(run, tmp_path):
+    _, calls = run(uninstaller_with_package_unit(tmp_path, tmp_path / "missing.service"))
+    assert "systemctl --user start emoji-picker" not in calls
+
+
+def test_uninstall_finishes_without_a_user_bus(run, home):
+    run(REPO / "install.sh")
+    p = paths(home)
+    result, _ = run(p["app"] / "uninstall.sh", FAKE_FAIL="systemctl")
+    assert result.returncode == 0, result.stdout + result.stderr
+    for name, path in p.items():
+        assert not path.exists(), name
+    assert "Emoji Picker removed." in result.stdout
 
 
 @pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")

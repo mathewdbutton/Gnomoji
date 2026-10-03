@@ -4,6 +4,11 @@
 # deleted afterwards. To remove it all: ~/.local/share/emoji-picker/uninstall.sh
 set -euo pipefail
 
+if [ "$(id -u)" -eq 0 ]; then
+    printf '✗ Run ./install.sh as yourself, without sudo: it installs into your home folder.\n' >&2
+    exit 1
+fi
+
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 APP_DIR="$DATA_DIR/emoji-picker"
@@ -26,6 +31,16 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: F401
 PY
 }
+
+# The service, desktop entry and launcher quote this folder; these characters would need
+# different escaping in each, so refuse them (spaces are fine).
+case "$APP_DIR" in
+    *[%\"\$\`\\]*|*$'\n'*)
+        printf "✗ Can't install into %s: the folder's path has one of %% \" \$ \` \\ or a line break.\n" \
+            "$APP_DIR" >&2
+        printf '  Set XDG_DATA_HOME to a folder without them, or run from a home folder without them.\n' >&2
+        exit 1 ;;
+esac
 
 echo "Checking requirements..."
 if ! has_python_gtk || ! command -v gnome-shell >/dev/null \
@@ -85,6 +100,7 @@ systemctl --user restart emoji-picker
 echo
 if gnome-extensions info "$UUID" 2>/dev/null | grep -q "State: ACTIVE"; then
     echo "Done! Double-tap right Shift in a text field."
+    echo "If this was an update, log out and back in to load the new version."
 else
     echo "Almost done: log out and back in once to finish setting up Emoji Picker."
     echo "Then double-tap right Shift in a text field."

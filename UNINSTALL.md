@@ -32,6 +32,9 @@ doesn't appear in App Center's search or installed list), or `sudo apt remove em
 ~/.local/share/emoji-picker/uninstall.sh --purge   # also delete them
 ```
 
+If the `.deb` or `.rpm` is installed as well, `uninstall.sh` starts the package's copy once its
+own is gone.
+
 | What | Where |
 |---|---|
 | App code | `~/.local/share/emoji-picker/emoji_picker/` |
@@ -44,14 +47,14 @@ doesn't appear in App Center's search or installed list), or `sudo apt remove em
 ## State and config (any route)
 
 None of the routes above touch these; they're per-user data, not part of the install. Only
-`uninstall.sh --purge` deletes them (a package never does, since packages don't touch home
-folders):
+`uninstall.sh --purge` deletes them all (a package never does, since packages don't touch home
+folders); plain `uninstall.sh` deletes only `extension-enabled`:
 
 | File | Written by |
 |---|---|
 | `~/.local/state/emoji-picker/recent.json` | The picker, on your first pick |
 | `~/.local/state/emoji-picker/skin-tone.json` | The picker, when you first choose a tone |
-| `~/.local/state/emoji-picker/extension-enabled` | The picker, the first time it switches the extension on for you |
+| `~/.local/state/emoji-picker/extension-enabled` | The picker, the first time it switches the extension on for you. `uninstall.sh` always deletes it, since it also switches the extension off: a `.deb` or `.rpm` installed afterwards then switches it on again |
 | `~/.local/state/emoji-picker/welcomed` | 0.2.x only; no longer written, but may still be there from an upgrade |
 | `~/.config/emoji-picker/config.toml` | You, if you create one |
 
