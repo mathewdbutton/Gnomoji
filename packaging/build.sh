@@ -14,7 +14,8 @@ UUID=emoji-picker@mathewdbutton.github.io
 APP=/usr/lib/emoji-picker
 umask 022
 
-work="$(mktemp -d)"
+# Not under $TMPDIR: the rpmbuild --define values below split on spaces.
+work="$(mktemp -d /tmp/emoji-picker-build.XXXXXX)"
 trap 'rm -rf "$work"' EXIT
 src="$work/src"
 root="$work/root"

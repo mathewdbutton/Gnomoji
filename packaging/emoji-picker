@@ -1,5 +1,6 @@
 #!/bin/sh
 # Run the emoji picker. If it's already running, this opens or closes it instead.
-# Template: @APPDIR@ is the folder holding the emoji_picker package.
+# Template: install.sh and packaging/build.sh replace the APPDIR placeholder with the
+# folder holding the emoji_picker package.
 export PYTHONPATH="@APPDIR@"
 exec /usr/bin/python3 -m emoji_picker "$@"

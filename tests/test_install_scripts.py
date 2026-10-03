@@ -107,6 +107,17 @@ def test_templates_point_at_the_copied_code_with_quotes(run, home):
     assert f'export PYTHONPATH="{app}"' in p["bin"].read_text()
 
 
+def test_installed_comments_dont_name_the_app_folder(run, home):
+    # The templates' comments mustn't contain the placeholder, or the filled-in files say
+    # "# Template: /home/.../emoji-picker is the folder...".
+    run(REPO / "install.sh")
+    app = str(paths(home)["app"])
+    for name in ("unit", "bin", "desktop"):
+        for line in paths(home)[name].read_text().splitlines():
+            if line.startswith("#") and not line.startswith("#!"):
+                assert app not in line, (name, line)
+
+
 def test_installed_launcher_finds_the_code(run, home):
     run(REPO / "install.sh")
     app = paths(home)["app"]

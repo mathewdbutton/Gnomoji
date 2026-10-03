@@ -2,6 +2,7 @@
 
 import gzip
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -59,9 +60,9 @@ def package_names(var: str) -> list[str]:
     return sorted(line.group(1).split())
 
 
-def build(out: Path, cwd: Path = REPO) -> list[Path]:
+def build(out: Path, cwd: Path = REPO, env: dict[str, str] | None = None) -> list[Path]:
     result = subprocess.run([str(BUILD), str(out)], cwd=cwd, capture_output=True, text=True,
-                            check=False)
+                            check=False, env=env)
     assert result.returncode == 0, result.stderr
     return [Path(line) for line in result.stdout.split()]
 
@@ -267,3 +268,22 @@ def test_builds_only_committed_files(tmp_path):
     tar = next(p for p in paths if p.name.endswith(".tar.gz"))
     with tarfile.open(tar) as t:
         assert not any(n.endswith("leak.py") for n in t.getnames())
+
+
+def test_build_work_folder_ignores_tmpdir():
+    # rpmbuild's --define "stage $root" / "_topdir ..." split on spaces, so the work folder
+    # mustn't come from a TMPDIR that might have them.
+    assert 'work="$(mktemp -d /tmp/emoji-picker-build.XXXXXX)"' in BUILD.read_text()
+
+
+@needs_deb
+def test_builds_with_spaces_in_tmpdir(tmp_path):
+    tmp = tmp_path / "temp dir"
+    tmp.mkdir()
+    paths = build(tmp_path / "dist", env={**os.environ, "TMPDIR": str(tmp)})
+    assert any(p.suffix == ".deb" for p in paths)
+
+
+def test_the_v1_spike_is_gone():
+    # 0.2's clipboard/uinput probe: wrong for 0.3, and the tarball ships the whole repo.
+    assert not (REPO / "spike").exists()
