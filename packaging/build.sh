@@ -88,7 +88,15 @@ else
     echo "build.sh: rpmbuild not found, skipping the .rpm (Ubuntu: sudo apt install rpm)" >&2
 fi
 
-# --- tarball ------------------------------------------------------------------------------
+# --- tarball --------------------------------------------------------------------------
+# Install-only: just what install.sh/uninstall.sh need plus user docs, not the whole repo.
+# GitHub's own "Source code" download already offers the full repo for that.
 tarball="$OUT/gnomoji-${version}.tar.gz"
-git -C "$REPO" archive --format=tar.gz --prefix="gnomoji-${version}/" -o "$tarball" HEAD
+tarball_paths=(
+    install.sh uninstall.sh src/gnomoji extension systemd
+    desktop/$APP_ID.desktop desktop/$APP_ID.svg
+    packaging/gnomoji README.md UNINSTALL.md LICENSE
+)
+git -C "$REPO" archive --format=tar.gz --prefix="gnomoji-${version}/" -o "$tarball" \
+    HEAD -- "${tarball_paths[@]}"
 echo "$tarball"

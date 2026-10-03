@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from test_install_scripts import bin_dir, home, paths, run  # noqa: F401  (reused fixtures)
+
 REPO = Path(__file__).resolve().parent.parent
 BUILD = REPO / "packaging" / "build.sh"
 APP_ID = "local.emojipicker.EmojiPicker"
@@ -21,6 +23,14 @@ EXT = f"usr/share/gnome-shell/extensions/{UUID}"
 SERVICE = "usr/lib/systemd/user/gnomoji.service"
 DESKTOP = f"usr/share/applications/{APP_ID}.desktop"
 DOC = "usr/share/doc/gnomoji"
+
+# Kept in sync with packaging/build.sh's tarball_paths: what install.sh/uninstall.sh need
+# plus user docs, not the whole repo (GitHub's own "Source code" download covers that).
+TARBALL_PATHS = [
+    "install.sh", "uninstall.sh", "src/gnomoji", "extension", "systemd",
+    f"desktop/{APP_ID}.desktop", f"desktop/{APP_ID}.svg",
+    "packaging/gnomoji", "README.md", "UNINSTALL.md", "LICENSE",
+]
 
 INSTALLED_FILES = [
     f"{APP}/gnomoji/__main__.py",
@@ -58,6 +68,12 @@ def version() -> str:
 def package_names(var: str) -> list[str]:
     line = re.search(rf"^{var}=\((.*)\)$", (REPO / "install.sh").read_text(), re.MULTILINE)
     return sorted(line.group(1).split())
+
+
+def tracked_files(*paths: str) -> list[str]:
+    """Committed files under the given pathspecs, per git itself (so the test stays honest)."""
+    return subprocess.run(["git", "ls-files", "--", *paths], cwd=REPO, check=True,
+                          capture_output=True, text=True).stdout.split()
 
 
 def build(out: Path, cwd: Path = REPO, env: dict[str, str] | None = None) -> list[Path]:
@@ -236,17 +252,67 @@ def tarball(dist):
     return dist / f"gnomoji-{version()}.tar.gz"
 
 
-def test_tarball_is_a_snapshot_with_the_installer(tarball):
+def test_tarball_contains_exactly_the_install_only_allow_list(tarball):
+    # Install-only, not a repo snapshot: exactly what install.sh/uninstall.sh need plus user
+    # docs. The allow-list comes from git itself, so a future tracked file under one of these
+    # paths is caught here rather than silently shipped or silently missing.
+    prefix = f"gnomoji-{version()}/"
+    expected = {prefix.rstrip("/")}
+    for f in tracked_files(*TARBALL_PATHS):
+        parts = Path(f).parts
+        expected.update(prefix + "/".join(parts[:i]) for i in range(1, len(parts) + 1))
+    with tarfile.open(tarball) as tar:
+        names = {n.rstrip("/") for n in tar.getnames()}
+    assert names == expected
+
+
+def test_tarball_install_scripts_are_executable(tarball):
+    prefix = f"gnomoji-{version()}/"
+    with tarfile.open(tarball) as tar:
+        for rel in ("install.sh", "uninstall.sh"):
+            assert tar.getmember(prefix + rel).mode & 0o111, rel
+
+
+def test_tarball_excludes_dev_only_paths(tarball):
     prefix = f"gnomoji-{version()}/"
     with tarfile.open(tarball) as tar:
         names = tar.getnames()
-        install = tar.getmember(prefix + "install.sh")
-        assert install.mode & 0o111
-    assert all(n.startswith(prefix) or n == prefix.rstrip("/") for n in names)
-    for rel in ("install.sh", "uninstall.sh", "extension/metadata.json",
-                "src/gnomoji/__main__.py", "systemd/gnomoji.service", "LICENSE"):
-        assert prefix + rel in names, rel
+    for excluded in ("tests", "docs", "tools", ".github", "CLAUDE.md", "CLAUDE.local.md",
+                     "pyproject.toml", "uv.lock", ".gitignore", "desktop/README.md",
+                     "packaging/build.sh", "packaging/deb", "packaging/rpm",
+                     "packaging/smoke-test-deb.sh", "packaging/smoke-test-rpm.sh",
+                     "packaging/enable-for-everyone", "packaging/disable-for-everyone"):
+        assert not any(n == prefix + excluded or n.startswith(prefix + excluded + "/")
+                       for n in names), excluded
     assert not any("CLAUDE.local" in n for n in names)
+
+
+def test_tarball_installs_with_install_sh(tarball, tmp_path, run, home):  # noqa: F811
+    # Extracts the real tarball and runs its install.sh through the same throwaway-HOME /
+    # fake-commands harness as tests/test_install_scripts.py, so this is a real install, not
+    # just a path check.
+    extract_dir = tmp_path / "extracted"
+    extract_dir.mkdir()
+    with tarfile.open(tarball) as tar:
+        tar.extractall(extract_dir, filter="data")
+    root = extract_dir / f"gnomoji-{version()}"
+
+    result, calls = run(root / "install.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    p = paths(home)
+    assert (p["app"] / "gnomoji" / "__main__.py").is_file()
+    assert (p["app"] / "gnomoji" / "data" / "emoji.json").is_file()
+    assert os.access(p["app"] / "uninstall.sh", os.X_OK)
+    for name in ("extension.js", "tapDetector.js", "insertWaiter.js", "metadata.json"):
+        assert (p["ext"] / name).is_file(), name
+    assert p["desktop"].is_file() and p["icon"].is_file()
+    assert "systemctl --user enable gnomoji" in calls
+
+    uninstall_result, uninstall_calls = run(p["app"] / "uninstall.sh")
+    assert uninstall_result.returncode == 0, uninstall_result.stdout + uninstall_result.stderr
+    assert f"gnome-extensions disable {UUID}" in uninstall_calls
+    for name, path in p.items():
+        assert not path.exists(), name
 
 
 # --- all formats -------------------------------------------------------------------------

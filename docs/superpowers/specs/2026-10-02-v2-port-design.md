@@ -177,8 +177,10 @@ files only, as today) into `dist/`:
 - `emoji-picker_<version>_all.deb` (`dpkg-deb`)
 - `emoji-picker-<version>-1.noarch.rpm` (`rpmbuild` with a spec file that packages the
   prebuilt tree; `rpm` is installable on Ubuntu, so one machine builds both)
-- `emoji-picker-<version>.tar.gz`: the repo snapshot under `emoji-picker-<version>/`, with
-  `install.sh` at the top
+- `emoji-picker-<version>.tar.gz`: install-only, not a repo snapshot — just what
+  `install.sh`/`uninstall.sh` need plus user docs, under `emoji-picker-<version>/` with
+  `install.sh` at the top. (Later renamed `gnomoji-<version>.tar.gz`; GitHub's own "Source
+  code" download already covers the full repo.)
 
 | | `.deb` | `.rpm` |
 |---|---|---|

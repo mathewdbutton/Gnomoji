@@ -115,8 +115,13 @@ runs the packaged copy under `/usr/lib/gnomoji`.
 ## Packaging and releasing
 
 One script, `packaging/build.sh [OUT_DIR]`, builds all three formats from `git archive HEAD`
-(committed files only; uncommitted edits aren't in any of them). All three install the same
-tree, just at a different prefix: `/usr/lib/gnomoji/gnomoji/` for the `.deb`/`.rpm`,
+(committed files only; uncommitted edits aren't in any of them). The `.tar.gz` is install-only,
+not a repo snapshot: `git archive` is given an explicit allow-list of paths (just what
+`install.sh`/`uninstall.sh` need, plus user docs), so things like `tests/`, `docs/`,
+`CLAUDE.md` and the rest of `packaging/` never ship in it; GitHub's own "Source code" download
+already covers the full repo. `tests/test_package.py` checks the tarball's file set against
+that same allow-list (derived from `git ls-files`, so it can't drift unnoticed). All three
+install the same tree, just at a different prefix: `/usr/lib/gnomoji/gnomoji/` for the `.deb`/`.rpm`,
 `~/.local/share/gnomoji/gnomoji/` for `install.sh`. Code is reached via `PYTHONPATH`
 in the launcher, service and desktop entry (`packaging/gnomoji`, `systemd/gnomoji.service`,
 `desktop/*.desktop`, all templated with `@APPDIR@`) rather than Python's own site-packages:

@@ -46,6 +46,10 @@ cd gnomoji-<version>
 It checks what's missing and prints the `apt`/`dnf` command for it if so (it never runs
 `sudo` itself). Once it's done, you can delete the folder.
 
+This tarball contains just what `install.sh` needs to install Gnomoji, not the whole repo (for
+that, use GitHub's own "Source code" download on the [releases
+page](https://github.com/mathewdbutton/Gnomoji/releases/latest)).
+
 ### After any of these
 
 **Log out and back in once.** GNOME only notices a newly installed extension at log-in; a
