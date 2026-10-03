@@ -28,7 +28,7 @@ from . import extension_setup
 from .emoji_data import EmojiData, Recents, SkinTone
 from .flow import PickerFlow
 from .shell import ShellLink
-from .welcome import Welcome, message
+from .welcome import ActiveCheck, Welcome, message
 from .window import PickerWindow
 
 APP_ID = "local.emojipicker.EmojiPicker"
@@ -114,7 +114,8 @@ class EmojiPickerApp(Adw.Application):
             send, withdraw = _notifications(connection, *message(active))
             Welcome(send, withdraw, _schedule).start()
 
-        self._shell.extension_active(welcome)
+        # enable() only just ran: give GNOME Shell a moment to turn the extension on live.
+        ActiveCheck(self._shell.extension_active, self._shell.on_ready, _schedule, welcome).start()
 
     def _watch_config(self) -> None:
         """Apply config.toml edits live. GLib's monitor also reports a file (or folder)

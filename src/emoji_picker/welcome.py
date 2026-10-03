@@ -23,6 +23,49 @@ def message(active: bool) -> tuple[str, str]:
     return READY if active else LOG_OUT
 
 
+# Right after the first start switches the extension on, GNOME Shell may not have turned it
+# on yet, so a "not running" answer waits this long for its Ready signal, then asks again.
+READY_WAIT_MS = 3000
+
+
+class ActiveCheck:
+    """Answer once whether the extension is running, allowing for it to start any moment.
+
+    ask(callback) asks GNOME Shell (callback(True/False)); on_ready(callback) subscribes to
+    the extension's Ready signal; answer(active) gets the verdict, exactly once.
+    """
+
+    def __init__(
+        self,
+        ask: Callable[[Callable[[bool], None]], None],
+        on_ready: Callable[[Callable[[], None]], None],
+        schedule: Callable[[int, Callable[[], None]], None],
+        answer: Callable[[bool], None],
+    ):
+        self._ask, self._on_ready, self._schedule = ask, on_ready, schedule
+        self._answer = answer
+        self._done = False
+
+    def start(self) -> None:
+        self._ask(self._first_answer)
+
+    def _first_answer(self, active: bool) -> None:
+        if active:
+            self._finish(True)
+            return
+        self._on_ready(lambda: self._finish(True))
+        self._schedule(READY_WAIT_MS, self._ask_again)
+
+    def _ask_again(self) -> None:
+        if not self._done:
+            self._ask(self._finish)
+
+    def _finish(self, active: bool) -> None:
+        if not self._done:
+            self._done = True
+            self._answer(active)
+
+
 # send(on_result) delivers the notification and calls on_result(None) once it's
 # accepted, or on_result(<D-Bus error name>) if it isn't.
 Send = Callable[[Callable[[str | None], None]], None]
