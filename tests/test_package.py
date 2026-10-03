@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from test_install_scripts import bin_dir, home, paths, run  # noqa: F401  (reused fixtures)
+from conftest import paths  # bin_dir, home, run fixtures come from conftest.py automatically
 
 REPO = Path(__file__).resolve().parent.parent
 BUILD = REPO / "packaging" / "build.sh"
@@ -70,9 +70,9 @@ def package_names(var: str) -> list[str]:
     return sorted(line.group(1).split())
 
 
-def tracked_files(*paths: str) -> list[str]:
+def tracked_files(*pathspecs: str) -> list[str]:
     """Committed files under the given pathspecs, per git itself (so the test stays honest)."""
-    return subprocess.run(["git", "ls-files", "--", *paths], cwd=REPO, check=True,
+    return subprocess.run(["git", "ls-files", "--", *pathspecs], cwd=REPO, check=True,
                           capture_output=True, text=True).stdout.split()
 
 
@@ -287,7 +287,7 @@ def test_tarball_excludes_dev_only_paths(tarball):
     assert not any("CLAUDE.local" in n for n in names)
 
 
-def test_tarball_installs_with_install_sh(tarball, tmp_path, run, home):  # noqa: F811
+def test_tarball_installs_with_install_sh(tarball, tmp_path, run, home):
     # Extracts the real tarball and runs its install.sh through the same throwaway-HOME /
     # fake-commands harness as tests/test_install_scripts.py, so this is a real install, not
     # just a path check.
