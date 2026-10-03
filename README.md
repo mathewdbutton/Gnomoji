@@ -106,8 +106,11 @@ anything. The picker logs "unknown config key" for each and otherwise works fine
 ## Privacy and security
 
 The picker doesn't read your keystrokes and never touches the clipboard. The extension
-reacts only to GNOME's own "locate pointer" key (set to right Shift while the picker is
-running) and types only the emoji you click or press Enter on.
+reacts only to GNOME's own "locate pointer" key (set to right Shift while the extension is
+on). It types through a D-Bus method that other programs running as you could also call,
+so it limits what that can do: one insert per right-Shift double-tap, only into the window
+you double-tapped in, and only text that could be a single emoji (short, no control
+characters such as Enter). Normally that's the emoji you click or press Enter on.
 
 ## Uninstall
 

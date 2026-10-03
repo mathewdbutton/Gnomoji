@@ -53,3 +53,27 @@ def test_extension_never_uses_the_clipboard():
     text = source()
     assert "Clipboard" not in text
     assert "notify_keyval" not in text
+
+
+def insert_method() -> str:
+    text = source()
+    start = text.index("    Insert(text) {")
+    return text[start:text.index("\n    }\n", start)]
+
+
+def test_insert_checks_the_text_before_anything_else():
+    text = source()
+    assert "import {acceptInsert, decide} from './insertWaiter.js';" in text
+    body = insert_method()
+    assert "if (!acceptInsert(text))" in body
+    assert body.index("acceptInsert(text)") < body.index("timeout_add")
+
+
+def test_each_double_tap_arms_one_insert():
+    body = insert_method()
+    # Refused unless a double-tap armed it...
+    assert "if (target === null)" in body
+    assert body.index("target === null") < body.index("timeout_add")
+    # ...and disarmed as soon as it's taken, so a second Insert needs a new double-tap.
+    assert "this._target = null;" in body
+    assert body.index("this._target = null;") < body.index("timeout_add")

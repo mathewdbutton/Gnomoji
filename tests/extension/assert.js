@@ -13,9 +13,9 @@ export function test(name, fn) {
     }
 }
 
-export function eq(actual, expected) {
+export function eq(actual, expected, label = '') {
     if (actual !== expected)
-        throw new Error(`expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+        throw new Error(`${label ? `${label}: ` : ''}expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 }
 
 export function done() {

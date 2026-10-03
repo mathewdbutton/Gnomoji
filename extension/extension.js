@@ -6,11 +6,13 @@
 //    to the app (mutter 46 keybindings.c, process_locate_pointer_key). We point it at
 //    Shift_R, count taps on the `global` 'locate-pointer' signal, and emit the D-Bus
 //    signal DoubleTap when a text field has input-method focus.
-// 2. Insert. Insert(text) waits for focus to come back to the window that was focused
-//    at the double-tap and for its text field to check in with the input method, then
-//    commits the text the way the on-screen keyboard does (Main.inputMethod.commit).
-//    Apps without input-method focus (Qt apps like Konsole, X11 apps) can't be
-//    reached; there is deliberately no clipboard fallback.
+// 2. Insert. Each double-tap arms one Insert(text); without one, or for text that couldn't
+//    be an emoji (acceptInsert in insertWaiter.js), it's refused. Insert waits for focus
+//    to come back to the window that was focused at the double-tap and for its text
+//    field to check in with the input method, then commits the text the way the
+//    on-screen keyboard does (Main.inputMethod.commit). Apps without input-method focus
+//    (Qt apps like Konsole, X11 apps) can't be reached; there is deliberately no
+//    clipboard fallback.
 //
 // The double-tap window comes from the picker's config file via Configure(a{sv}). The picker sends
 // them at its startup and again whenever we emit Ready (on enable), so they arrive
@@ -25,7 +27,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {TapDetector} from './tapDetector.js';
-import {decide} from './insertWaiter.js';
+import {acceptInsert, decide} from './insertWaiter.js';
 
 const KEY = 'locate-pointer-key';
 const POLL_MS = 10;
@@ -101,18 +103,28 @@ export default class EmojiPickerExtension extends Extension {
             log(`ignoring invalid double-tap-ms: ${ms}`);
     }
 
-    // D-Bus method. The picker hides its window before calling this.
+    // D-Bus method. The picker hides its window before calling this. Any process in the
+    // session can call it, so it only takes one emoji-sized text, once per double-tap.
     Insert(text) {
+        if (!acceptInsert(text)) {
+            log('insert refused: not an emoji (too long, empty or has control characters)');
+            return;
+        }
+        const target = this._target;
+        if (target === null) {
+            log('insert refused: no double-tap is waiting for one');
+            return;
+        }
+        this._target = null; // a second Insert needs a new double-tap
         log(`insert requested (IM focus now: ${Boolean(Main.inputMethod.currentFocus)})`);
         this._stopPolling();
-        const target = this._target;
         const start = nowMs();
         let backSince = null;
         this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_MS, () => {
             const now = nowMs();
             // Main.modalCount === 0: a Shell modal (e.g. the overview) can hold input-method
             // focus over the target even while it's the focus_window, so don't commit into it.
-            const focusBack = target !== null && Main.modalCount === 0 && global.display.focus_window === target;
+            const focusBack = Main.modalCount === 0 && global.display.focus_window === target;
             if (focusBack && backSince === null)
                 backSince = now;
             const imFocus = Boolean(Main.inputMethod.currentFocus);

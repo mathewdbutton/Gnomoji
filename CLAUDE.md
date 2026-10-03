@@ -41,6 +41,12 @@ never in this file.
   the extension gives up after 200 ms with focus back but no text field, or 1.5 s if focus
   never comes back). Apps without GNOME input-method focus — Qt apps like Konsole, X11 apps —
   can't be reached this way. There is deliberately no clipboard fallback.
+- **`Insert` is armed once per double-tap.** Any process in the session can call it (no
+  sender check, by decision), so the extension refuses it unless a `DoubleTap` armed it, takes
+  the arm at once (a second `Insert` needs a new double-tap), and refuses text that couldn't be
+  an emoji (`acceptInsert` in `extension/insertWaiter.js`: at most 32 code points, no C0/C1
+  control characters). Picking from a picker opened with `emoji-picker` rather than a
+  double-tap therefore inserts nothing unless an unused double-tap is still armed.
 - **Extension code only loads at the next log-in**, and GNOME only notices newly installed
   extension files at log-in too. Extensions are switched on per person, not system-wide, which
   is why `extension_setup.enable_once` exists: the app switches the extension on for the
