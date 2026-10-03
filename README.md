@@ -80,7 +80,7 @@ the clone rather than running the app directly.
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous category |
 | Click ✋ (next to the search box) | Choose a skin tone. It applies to every emoji that has tones, except "Recently used", which keeps the tone you picked each one in. It's remembered. |
 | Click **Clear** (on the "Recently used" heading) | Empty the recently used list. It fills up again as you pick. |
-| Run `emoji-picker` again | Toggles the picker (open if closed, close if open) |
+| Run `emoji-picker` again | Toggles the picker (open if closed, close if open). To insert, open it with the double-tap instead: a pick only goes to the window you last double-tapped right Shift in, once per double-tap, so a picker opened this way usually inserts nothing. |
 
 ## Configuration
 

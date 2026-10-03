@@ -52,7 +52,11 @@ never in this file.
   is why `extension_setup.enable_once` exists: the app switches the extension on for the
   current person on its first start (gated by `~/.local/state/emoji-picker/extension-enabled`,
   kept separate from 0.2.x's `welcomed` marker so people upgrading from 0.2.x get the
-  switch-on too, even though they already have `welcomed`).
+  switch-on too, even though they already have `welcomed`). `uninstall.sh` takes the extension
+  out of `enabled-extensions`, so it always deletes that marker (not only with `--purge`), and
+  starts the package's service if a `.deb`/`.rpm` is installed too. Right after `enable_once`,
+  GNOME Shell may not have turned the extension on yet, so the welcome's "ready or log out?"
+  check (`welcome.ActiveCheck`) waits up to 3 s for `Ready` before asking for a log-out.
 - **GNOME 50** (e.g. Fedora 44, Ubuntu 26.04): not yet checked by hand (pending).
 - **GNOME needs ~6 s to notice a new desktop file** (measured, GNOME 46). Until then
   `org.gtk.Notifications.AddNotification` fails with `InvalidApp` and the notification is lost;
@@ -93,7 +97,7 @@ never in this file.
 ## Commands
 
 ```bash
-uv run pytest -q && uv run ruff check            # 182 tests, lint (ruff flags unused noqa, RUF100)
+uv run pytest -q && uv run ruff check            # 207 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m emoji_picker   # foreground run; inserts only with the extension installed
 .venv/bin/python -m emoji_picker.window          # window preview; doesn't insert (steals focus!)
 journalctl --user -u emoji-picker -f             # service logs, once installed

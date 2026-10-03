@@ -82,19 +82,23 @@ rm -rf ~/.local/state/emoji-picker ~/.config/emoji-picker
 
 ## 0.2.x leftovers
 
-0.2 used a udev rule and the clipboard; 0.3 doesn't, and the rule isn't part of this package
-any more. If you installed 0.2.x from a clone (not the `.deb`), you may still have:
+0.2 read the keyboard through a udev rule and pasted through the clipboard; 0.3 needs neither,
+and no longer ships the rule. Depending on how you installed 0.2.x:
 
-- **`/etc/udev/rules.d/70-emoji-picker.rules`**, left by that old install. Nothing removes it
-  automatically: `sudo rm /etc/udev/rules.d/70-emoji-picker.rules`.
+- **Upgraded from the 0.2.x `.deb`:** the upgrade removes the package's copy of the rule
+  (`/usr/lib/udev/rules.d/70-emoji-picker.rules`) for you.
+- **Installed 0.2.x from a clone:** its copy in `/etc/udev/rules.d/70-emoji-picker.rules` (or
+  `70-emoji-picker-uinput.rules`) stays until you remove it:
+  `sudo rm /etc/udev/rules.d/70-emoji-picker.rules`. `uninstall.sh` reminds you if it's there.
 - **Membership of the `input` group**, if you joined it only for the picker (skip this if
   another program, such as a keyboard remapper, needs it):
   ```bash
   sudo gpasswd -d "$USER" input   # then log out and back in
   ```
-- **Keyboard access from that rule.** Access it granted lasts until your next log-in even
-  after you upgrade to 0.3.0 or remove the rule — GNOME re-reads udev rules at boot/log-in,
-  not live, so the old access doesn't disappear until then.
+- **Either route: keyboard access lasts until your next log-in.** The rule tagged keyboards
+  and `/dev/uinput` with `uaccess`, so systemd-logind gave whoever was logged in at the screen
+  access to them. Removing the rule doesn't take back access already given; logging out and
+  back in does.
 
 ## Checking it's all gone
 
