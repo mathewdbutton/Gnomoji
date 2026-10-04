@@ -1,6 +1,6 @@
 [project]
 name = "gnomoji"
-version = "0.3.1"
+version = "0.3.2"
 description = "Gnomoji: double-tap right Shift to pick an emoji, for GNOME on Wayland"
 license = "MIT"
 requires-python = ">=3.12"
