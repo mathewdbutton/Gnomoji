@@ -17,8 +17,8 @@
 //    method keeps it in the private Main.inputMethod._cursorRect, in screen coordinates; the
 //    picker's own search box overwrites it once the picker opens, so it can't be read later).
 //    When the picker's window is shown we move it just below that cursor (placement.js), or to
-//    where it was last dragged (kept in memory until log-out). The app can't place its own
-//    window on Wayland; GNOME Shell can.
+//    where it was last dragged (kept in memory until log-out or screen lock). The app can't
+//    place its own window on Wayland; GNOME Shell can.
 //
 // The double-tap window comes from the picker's config file via Configure(a{sv}). The picker sends
 // them at its startup and again whenever we emit Ready (on enable), so they arrive
@@ -67,7 +67,7 @@ export default class EmojiPickerExtension extends Extension {
         this._target = null;
         this._pollId = 0;
         this._cursorAt = null; // the text cursor saved at the last double-tap
-        this._dragged = null; // where the picker was last dragged, until log-out
+        this._dragged = null; // where the picker was last dragged, until log-out or screen lock
         this._shownWait = null; // {window, id}: a new picker window we're waiting to see shown
         this._createdId = global.display.connect('window-created', (_display, window) => this._onWindowCreated(window));
         this._grabEndId = global.display.connect('grab-op-end', (_display, window) => this._onGrabEnd(window));

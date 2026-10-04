@@ -92,17 +92,25 @@ never in this file.
   ~140 ms after one closes GNOME takes focus from the picker, so click-away closes it (measured,
   GNOME 46, with `Gtk.DropDown` and `Gtk.MenuButton` + `Gtk.Popover`). Taking focus back isn't
   possible (see `present()` below). The skin tone list is a plain box in a `Gtk.Overlay` instead.
-- **The window opens where GNOME places it** (top-left by default).
-- **The picker can't reopen where it was dragged.** Hiding unmaps it, so GNOME re-places it.
-  Minimise-instead-of-hide keeps the position, but `present()` from the double-tap trigger (not
-  input in our window) gets no focus: GNOME shows a "… is ready" notification instead.
+- **The extension places the picker; the app can't** (Wayland). At the double-tap it saves
+  `Main.inputMethod._cursorRect`, the text cursor in screen coordinates (private, same in GNOME
+  46 and 50; set only while IBus runs; **not cleared when focus moves**, and **overwritten by the
+  picker's own search box** once it opens, so it's read at the double-tap and must lie inside the
+  window focused then). Hiding the picker destroys its window, so each opening is a new one; the
+  extension moves it on that window's `'shown'` signal. Not on `'window-created'`: GNOME places
+  windows after that (`meta_window_force_placement`) and would undo the move. Rules in
+  `extension/placement.js`: below the cursor, above it if there's no room, kept in the monitor's
+  work area; otherwise the last-dragged spot (memory only, reset at log-out or screen lock:
+  GNOME switches the extension off while locked); otherwise GNOME's placement.
+  Minimise-instead-of-hide was tried before and doesn't work: `present()` from the double-tap
+  trigger gets no focus.
 
 ## Commands
 
 ```bash
 ./dev-setup.sh                                   # one-command setup: packages (Ubuntu/Debian
                                                   # asks first), .venv, runs the tests once
-uv run pytest -q && uv run ruff check            # 214 tests, lint (ruff flags unused noqa, RUF100)
+uv run pytest -q && uv run ruff check            # 221 tests, lint (ruff flags unused noqa, RUF100)
 PYTHONPATH=src timeout 120 /usr/bin/python3 -m gnomoji   # foreground run; inserts only with the extension installed
 .venv/bin/python -m gnomoji.window          # window preview; doesn't insert (steals focus!)
 journalctl --user -u gnomoji -f                  # service logs, once installed

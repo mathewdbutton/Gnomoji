@@ -90,6 +90,11 @@ the clone rather than running the app directly.
 | Click **Clear** (on the "Recently used" heading) | Empty the recently used list. It fills up again as you pick. |
 | Run `gnomoji` again | Toggles the picker (open if closed, close if open). To insert, open it with the double-tap instead: a pick only goes to the window you last double-tapped right Shift in, once per double-tap, so a picker opened this way usually inserts nothing. |
 
+The picker opens just below the text cursor (above it near the bottom of the screen). When the
+app doesn't tell GNOME where its cursor is, or you open the picker with `gnomoji`, it opens where
+you last dragged it since you logged in or unlocked the screen, or else where GNOME puts new
+windows.
+
 ## Configuration
 
 Optional `~/.config/emoji-picker/config.toml`:
