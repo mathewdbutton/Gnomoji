@@ -13,6 +13,12 @@
 //    on-screen keyboard does (Main.inputMethod.commit). Apps without input-method focus
 //    (Qt apps like Konsole, X11 apps) can't be reached; there is deliberately no
 //    clipboard fallback.
+// 3. Placement. At the double-tap we also save the text cursor's position (GNOME's input
+//    method keeps it in the private Main.inputMethod._cursorRect, in screen coordinates; the
+//    picker's own search box overwrites it once the picker opens, so it can't be read later).
+//    When the picker's window is shown we move it just below that cursor (placement.js), or to
+//    where it was last dragged (kept in memory until log-out). The app can't place its own
+//    window on Wayland; GNOME Shell can.
 //
 // The double-tap window comes from the picker's config file via Configure(a{sv}). The picker sends
 // them at its startup and again whenever we emit Ready (on enable), so they arrive
@@ -23,14 +29,17 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Mtk from 'gi://Mtk';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {TapDetector} from './tapDetector.js';
 import {acceptInsert, decide} from './insertWaiter.js';
+import {placePicker} from './placement.js';
 
 const KEY = 'locate-pointer-key';
 const POLL_MS = 10;
+const APP_ID = 'local.emojipicker.EmojiPicker'; // the picker's app id (src/gnomoji/__main__.py)
 const DBUS_PATH = '/io/github/mathewdbutton/EmojiPicker';
 const DBUS_IFACE = `<node>
   <interface name="io.github.mathewdbutton.EmojiPicker">
@@ -57,6 +66,11 @@ export default class EmojiPickerExtension extends Extension {
         this._taps = new TapDetector();
         this._target = null;
         this._pollId = 0;
+        this._cursorAt = null; // the text cursor saved at the last double-tap
+        this._dragged = null; // where the picker was last dragged, until log-out
+        this._shownWait = null; // {window, id}: a new picker window we're waiting to see shown
+        this._createdId = global.display.connect('window-created', (_display, window) => this._onWindowCreated(window));
+        this._grabEndId = global.display.connect('grab-op-end', (_display, window) => this._onGrabEnd(window));
         this._tapId = global.connect('locate-pointer', () => this._onTap());
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUS_IFACE, this);
         this._dbus.export(Gio.DBus.session, DBUS_PATH);
@@ -66,6 +80,11 @@ export default class EmojiPickerExtension extends Extension {
 
     disable() {
         global.disconnect(this._tapId);
+        global.display.disconnect(this._createdId);
+        global.display.disconnect(this._grabEndId);
+        this._cancelShownWait();
+        this._cursorAt = null;
+        this._dragged = null;
         this._stopPolling();
         this._dbus.unexport();
         // GNOME doesn't disable extensions at log-out, so dconf may still hold the 'Shift_R'
@@ -90,7 +109,78 @@ export default class EmojiPickerExtension extends Extension {
         if (!Main.inputMethod.currentFocus)
             return; // no text field (or a Qt/X11 app): nowhere to insert, so don't open
         this._target = global.display.focus_window;
+        // Read now: the picker's own search box replaces it as soon as the picker opens.
+        // placement.js checks it (GNOME keeps it after focus moves, so it can be another app's).
+        const rect = Main.inputMethod._cursorRect;
+        const frame = this._target.get_frame_rect();
+        this._cursorAt = {
+            rect: rect ? {x: rect.x, y: rect.y, width: rect.width, height: rect.height} : null,
+            frame: {x: frame.x, y: frame.y, width: frame.width, height: frame.height},
+            atMs: nowMs(),
+        };
         this._dbus.emit_signal('DoubleTap', null);
+    }
+
+    _isPicker(window) {
+        return window.get_wm_class() === APP_ID; // on Wayland, the app id
+    }
+
+    // Hiding the picker destroys its window, so each opening is a new one. GNOME places a
+    // window when it's first shown, after 'window-created' (mutter window.c,
+    // meta_window_force_placement), so a move here would be undone: wait for 'shown', which
+    // comes after placement and before the next repaint.
+    _onWindowCreated(window) {
+        if (!this._isPicker(window))
+            return;
+        this._cancelShownWait();
+        const id = window.connect('shown', () => {
+            this._cancelShownWait();
+            this._place(window);
+        });
+        this._shownWait = {window, id};
+    }
+
+    _cancelShownWait() {
+        if (this._shownWait) {
+            this._shownWait.window.disconnect(this._shownWait.id);
+            this._shownWait = null;
+        }
+    }
+
+    _place(window) {
+        const frame = window.get_frame_rect();
+        const at = placePicker({
+            cursorAt: this._cursorAt,
+            nowMs: nowMs(),
+            size: {width: frame.width, height: frame.height},
+            dragged: this._dragged,
+            workAreaFor: rect => this._workAreaFor(rect),
+        });
+        this._cursorAt = null; // a saved cursor is used at most once
+        if (at) {
+            window.move_frame(true, at.x, at.y);
+            log(`placed the picker at ${at.x},${at.y}`);
+        }
+    }
+
+    _workAreaFor(rect) {
+        const display = global.display;
+        let index = display.get_monitor_index_for_rect(new Mtk.Rectangle({
+            x: Math.round(rect.x), y: Math.round(rect.y),
+            width: Math.max(1, Math.round(rect.width)), height: Math.max(1, Math.round(rect.height)),
+        }));
+        if (index < 0)
+            index = display.get_primary_monitor(); // off every monitor
+        const area = Main.layoutManager.getWorkAreaForMonitor(index);
+        return {x: area.x, y: area.y, width: area.width, height: area.height};
+    }
+
+    // The picker can't be resized (window.py), so any grab on it is a move.
+    _onGrabEnd(window) {
+        if (!window || !this._isPicker(window))
+            return;
+        const frame = window.get_frame_rect();
+        this._dragged = {x: frame.x, y: frame.y};
     }
 
     // D-Bus method: settings from the picker's config file. Values arrive as GLib.Variants.
