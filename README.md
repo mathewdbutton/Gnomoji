@@ -5,6 +5,10 @@ or browse, then Enter (or click) types the emoji straight into the field. A smal
 extension does the typing: no clipboard, no special keyboard access, and no `sudo` for the
 picker itself.
 
+<p align="center">
+  <img src="docs/screenshot.png" width="380" alt="Gnomoji picker with &quot;party&quot; typed in the search box, showing 🥳 partying face highlighted among party emoji">
+</p>
+
 ## Requirements
 
 - **GNOME 46-50 on Wayland.** Tested on Ubuntu 24.04 (GNOME 46) and Fedora 44 (GNOME 50).
