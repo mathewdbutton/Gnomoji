@@ -1,0 +1,153 @@
+# Gnomoji: open the picker at the text cursor (design)
+
+**Status:** Draft for review (2026-10-04).
+
+**Changes:** the "window opens where GNOME places it" and "can't reopen where it was dragged"
+facts in `CLAUDE.md` and `2026-09-25-emoji-picker-design.md`. Everything else in
+`2026-10-02-v2-port-design.md` (trigger, insert, install routes) stays as it is.
+
+## Intent
+
+The picker opens just below the text cursor of the field you double-tapped in, like the Mac
+emoji panel, instead of wherever GNOME puts new windows (top-left by default). When there's no
+usable cursor position, it opens where you last dragged it; failing that, where GNOME puts it,
+as today.
+
+What the user asked for, in order of preference: (1) at the text cursor; (2) if that fails,
+where it was last dragged. Their answers: the dragged spot is remembered only until log-out (no
+file); the picker goes below the cursor with its left edge lined up, flipping above when there's
+no room; the screen edges (especially right and bottom) must be handled.
+
+## Why this is possible now
+
+A Wayland app can't place its own window, which is why the picker couldn't. The extension runs
+inside GNOME Shell, which places windows, so it can move the picker with `Meta.Window.move_frame`.
+**Only the extension changes.** The Python app, the D-Bus interface, the install routes and
+`UNINSTALL.md` stay as they are.
+
+## Spike findings (2026-10-04, GNOME 46, this machine; throwaway probe, not kept)
+
+- GNOME Shell's input method stores the focused text field's cursor rectangle in
+  `Main.inputMethod._cursorRect` (`js/misc/inputMethod.js`, `vfunc_set_cursor_location`), in
+  screen (stage) coordinates. GNOME 50.0's `inputMethod.js` has the same code and the same field.
+  It's private, so the extension reads it defensively (missing or malformed = no position).
+- Checked live: Text Editor (window at 562,263 → cursor 574,323, x growing while typing),
+  Firefox's address bar (612,43 → 417,43 while typing), the picker's own search box (followed the
+  window when it was dragged from 50,82 to 1833,352), and an editor (cursor tracks lines).
+- **It isn't cleared when focus moves**: with Firefox focused, it still held Text Editor's old
+  position. Hence the "inside the target window" check below.
+- **The picker's own search box overwrites it** as soon as the picker opens, so the position must
+  be read at the double-tap, not when the picker appears.
+- It's only set while IBus is running (`this._context`). Ubuntu and Fedora run IBus by default;
+  without it there's no position and the fallback applies.
+
+## Design
+
+### At the double-tap
+
+`_onTap()` already records `this._target` (the focused window) and only emits `DoubleTap` when a
+text field has input-method focus. It also saves
+`this._cursorAt = {rect, frame: target frame rect, atMs: now}` if `_cursorRect` is present. (The
+"inside the target" check happens in `placement.js`, so it's tested.)
+
+### When the picker window appears
+
+Hiding the picker destroys its window; each opening creates a new `Meta.Window`. The extension
+connects to `global.display`'s `'window-created'` and recognises the picker by
+`window.get_wm_class() === 'local.emojipicker.EmojiPicker'` (on Wayland this is the app id).
+Then:
+
+1. Read the window's frame rect. If its size is still 0×0, wait for its first `'size-changed'`,
+   then carry on (once).
+2. Ask `placement.js` for a position (below) and, if it returns one, `move_frame(true, x, y)`.
+3. Clear `this._cursorAt` (a saved position is used at most once).
+
+The aim is to move it before it's drawn, so it doesn't visibly jump. Whether `'window-created'`
+is early enough can only be seen on real hardware: it's a hands-on check. If it jumps, the
+fallback is to also hide the window actor until the move is done (`actor.opacity = 0`, restored
+right after `move_frame`).
+
+### Remembering the dragged spot
+
+Connect to `global.display`'s `'grab-op-end'` `(display, window, op)`. If `window` is the picker
+and `op` is a move (`Meta.GrabOp.MOVING`, `MOVING_UNCONSTRAINED` or `KEYBOARD_MOVING`), save its frame's `x, y` in
+`this._dragged`. It's kept in memory only: lost at log-out or when the extension is disabled. A
+cursor placement isn't a drag, so it doesn't overwrite it.
+
+### `extension/placement.js` (new, pure, no GNOME imports)
+
+```js
+export const GAP = 4;            // px between the cursor's line and the picker
+export const CURSOR_MAX_AGE_MS = 2000;
+
+// cursorAt: {rect, frame, atMs} | null   size: {width, height}   dragged: {x, y} | null
+// workAreaFor(rect) -> work area {x, y, width, height} of the monitor that rect is on
+export function placePicker({cursorAt, nowMs, size, dragged, workAreaFor}) -> {x, y} | null
+```
+
+1. **Cursor**, if `cursorAt` is set, at most `CURSOR_MAX_AGE_MS` old, and its rect is a valid
+   rect (finite numbers, height > 0; width may be 0, as GTK and Firefox send) whose top-left
+   lies inside `cursorAt.frame`:
+   - `wa = workAreaFor(rect)` (top bar and docks excluded).
+   - `x = rect.x`, then clamped into `[wa.x, wa.x + wa.width - size.width]`, so it slides left at
+     the right edge.
+   - Below: `y = rect.y + rect.height + GAP`. If that overflows the work area's bottom, above:
+     `y = rect.y - GAP - size.height`. If that overflows the top as well (screen too short),
+     clamp `y` into the work area: the only case where it may cover the line being typed.
+2. **Dragged spot**, otherwise, if `dragged` is set: `{x, y}` clamped into
+   `workAreaFor({x, y, width: size.width, height: size.height})`, so a spot on a monitor that's
+   since been unplugged still lands on screen.
+3. **`null`** otherwise: leave it where GNOME put it.
+
+If the picker is wider or taller than the work area, clamping puts it at the work area's left or
+top edge.
+
+`extension.js` passes `workAreaFor` as: `global.display.get_monitor_index_for_rect(new
+Mtk.Rectangle(...))`, then `Main.layoutManager.getWorkAreaForMonitor(index)`.
+
+### Lifecycle
+
+`enable()` connects `'window-created'` and `'grab-op-end'`; `disable()` disconnects them (and any
+pending `'size-changed'` handler) and clears `_cursorAt` and `_dragged`.
+
+### Opening without a double-tap
+
+`gnomoji` from a terminal: no `_cursorAt`, so the dragged spot or
+GNOME's placement, as above. The DoubleTap toggle closing an open picker creates no window, and
+the saved position simply expires after 2 s.
+
+## Files
+
+- `extension/placement.js`: new, as above.
+- `extension/extension.js`: the double-tap save, the two signal handlers, the header comment
+  (a third job: "Placement").
+- `tests/extension/test_placement.js`: new gjs tests, run by `tests/test_extension_js.py`.
+- `tests/test_package.py`, `tests/test_install_scripts.py`: add `placement.js` to the extension
+  file lists. `install.sh` and `packaging/build.sh` already copy `extension/*.js`.
+- `tests/test_extension_files.py`: source checks that `extension.js` imports `placePicker`, only
+  moves the window whose wm class is the app id, and disconnects its new handlers in `disable()`.
+- `CLAUDE.md`: rewrite the two placement facts.
+- `2026-09-25-emoji-picker-design.md`: a pointer at its placement text to this spec.
+- `README.md`: one line on where the picker opens.
+- `UNINSTALL.md`: no change (nothing new on disk).
+
+## Testing
+
+**gjs unit tests** (`test_placement.js`), using a 1920×1080 work area at 0,32 and a 380×420
+picker:
+
+- cursor in the middle → left edge at cursor x, top at cursor bottom + 4;
+- near the right edge → slides left to `wa.x + wa.width - 380`, still below;
+- near the bottom → opens above (`rect.y - 4 - 420`);
+- bottom-right corner → both;
+- near the left or top → pushed back inside;
+- work area too short for above and below → clamped inside;
+- second monitor (work area at 1920,0) → placed on that monitor's work area;
+- cursor older than 2 s, outside the target frame, missing, NaN or zero height → dragged spot;
+- dragged spot off every monitor → clamped into the work area it's given;
+- nothing → `null`;
+- a zero-width cursor (GTK, Firefox) is accepted.
+
+**Hands-on** (needs a log-out, since extension code only loads at log-in): Text Editor and Firefox
+with the cursor in the middle, at the right edge, and at the bottom of the screen; drag the picker,
+then open it with `gnomoji` → dragged spot; no visible jump when it opens; picks still insert.
