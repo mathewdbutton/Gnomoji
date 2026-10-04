@@ -55,23 +55,26 @@ text field has input-method focus. It also saves
 Hiding the picker destroys its window; each opening creates a new `Meta.Window`. The extension
 connects to `global.display`'s `'window-created'` and recognises the picker by
 `window.get_wm_class() === 'local.emojipicker.EmojiPicker'` (on Wayland this is the app id).
-Then:
+It can't move it there yet: in Mutter 46, `'window-created'` fires when the window object is
+made (`src/core/window.c:1357`), but GNOME only places the window later, in `meta_window_show`
+(`meta_window_force_placement`, line 2238), and `move_frame` doesn't mark a window as placed,
+so an early move would be overwritten. So it connects to that window's `'shown'` signal, which
+`meta_window_show` emits at its end (line 2386), after placement and before the next repaint,
+and disconnects it after the first emission. Then:
 
-1. Read the window's frame rect. If its size is still 0×0, wait for its first `'size-changed'`,
-   then carry on (once).
+1. Read the window's frame rect (its size is known by now).
 2. Ask `placement.js` for a position (below) and, if it returns one, `move_frame(true, x, y)`.
 3. Clear `this._cursorAt` (a saved position is used at most once).
 
-The aim is to move it before it's drawn, so it doesn't visibly jump. Whether `'window-created'`
-is early enough can only be seen on real hardware: it's a hands-on check. If it jumps, the
-fallback is to also hide the window actor until the move is done (`actor.opacity = 0`, restored
-right after `move_frame`).
+Moving before the next repaint means it's never drawn in GNOME's spot first. That it doesn't
+visibly jump is still a hands-on check.
 
 ### Remembering the dragged spot
 
-Connect to `global.display`'s `'grab-op-end'` `(display, window, op)`. If `window` is the picker
-and `op` is a move (`Meta.GrabOp.MOVING`, `MOVING_UNCONSTRAINED` or `KEYBOARD_MOVING`), save its frame's `x, y` in
-`this._dragged`. It's kept in memory only: lost at log-out or when the extension is disabled. A
+Connect to `global.display`'s `'grab-op-end'` `(display, window, op)`. If `window` is the picker,
+save its frame's `x, y` in `this._dragged`. The picker can't be resized (`window.py`,
+`set_resizable(False)`), so any grab on it is a move (mouse or keyboard); this avoids depending
+on `Meta.GrabOp` names, which have changed between GNOME versions. It's kept in memory only: lost at log-out or when the extension is disabled. A
 cursor placement isn't a drag, so it doesn't overwrite it.
 
 ### `extension/placement.js` (new, pure, no GNOME imports)
@@ -108,7 +111,7 @@ Mtk.Rectangle(...))`, then `Main.layoutManager.getWorkAreaForMonitor(index)`.
 ### Lifecycle
 
 `enable()` connects `'window-created'` and `'grab-op-end'`; `disable()` disconnects them (and any
-pending `'size-changed'` handler) and clears `_cursorAt` and `_dragged`.
+pending `'shown'` handler) and clears `_cursorAt` and `_dragged`.
 
 ### Opening without a double-tap
 
@@ -133,7 +136,7 @@ the saved position simply expires after 2 s.
 
 ## Testing
 
-**gjs unit tests** (`test_placement.js`), using a 1920×1080 work area at 0,32 and a 380×420
+**gjs unit tests** (`test_placement.js`), using a 1920×1048 work area at 0,32 (a 1080p screen under a 32 px top bar) and a 380×420
 picker:
 
 - cursor in the middle → left edge at cursor x, top at cursor bottom + 4;
