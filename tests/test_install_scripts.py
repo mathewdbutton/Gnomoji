@@ -22,7 +22,7 @@ def test_install_copies_everything_into_the_home_folder(run, home):
     assert (p["app"] / "gnomoji" / "__main__.py").is_file()
     assert (p["app"] / "gnomoji" / "data" / "emoji.json").is_file()
     assert os.access(p["app"] / "uninstall.sh", os.X_OK)
-    for name in ("extension.js", "tapDetector.js", "insertWaiter.js", "metadata.json"):
+    for name in ("extension.js", "tapDetector.js", "insertWaiter.js", "placement.js", "metadata.json"):
         assert (p["ext"] / name).is_file(), name
     assert not (p["ext"] / name).is_symlink()
     assert os.access(p["bin"], os.X_OK)

@@ -40,6 +40,7 @@ INSTALLED_FILES = [
     f"{EXT}/extension.js",
     f"{EXT}/tapDetector.js",
     f"{EXT}/insertWaiter.js",
+    f"{EXT}/placement.js",
     f"{EXT}/metadata.json",
     "usr/bin/gnomoji",
     SERVICE,
@@ -283,7 +284,7 @@ def test_tarball_installs_with_install_sh(tarball, tmp_path, run, home):
     assert (p["app"] / "gnomoji" / "__main__.py").is_file()
     assert (p["app"] / "gnomoji" / "data" / "emoji.json").is_file()
     assert os.access(p["app"] / "uninstall.sh", os.X_OK)
-    for name in ("extension.js", "tapDetector.js", "insertWaiter.js", "metadata.json"):
+    for name in ("extension.js", "tapDetector.js", "insertWaiter.js", "placement.js", "metadata.json"):
         assert (p["ext"] / name).is_file(), name
     assert p["desktop"].is_file() and p["icon"].is_file()
     assert "systemctl --user enable gnomoji" in calls
