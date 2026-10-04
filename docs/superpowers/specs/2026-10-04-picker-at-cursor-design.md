@@ -1,6 +1,6 @@
 # Gnomoji: open the picker at the text cursor (design)
 
-**Status:** Draft for review (2026-10-04).
+**Status:** Built and accepted (2026-10-04); hands-on PASS on GNOME 46.
 
 **Changes:** the "window opens where GNOME places it" and "can't reopen where it was dragged"
 facts in `CLAUDE.md` and `2026-09-25-emoji-picker-design.md`. Everything else in
@@ -169,3 +169,12 @@ picker:
 **Hands-on** (needs a log-out, since extension code only loads at log-in): Text Editor and Firefox
 with the cursor in the middle, at the right edge, and at the bottom of the screen; drag the picker,
 then open it with `gnomoji` → dragged spot; no visible jump when it opens; picks still insert.
+
+**Hands-on result (2026-10-04, Ubuntu 24.04, GNOME 46, `.deb` built from the branch): PASS.**
+The extension came up after one log-out with no JS errors in the Shell log. Over a few minutes
+in Text Editor and Firefox it logged ten `placed the picker at x,y` lines (Firefox's address bar
+gave 347,65: its cursor at y 43, height 18, plus the 4 px gap), one `picker shown, no position to
+use`, and three picks inserted in 10-11 ms, as before. The user's verdict: "it worked well". The
+final review caught, before this test, that the picker can't be recognised at `'window-created'`
+on Wayland (no app id yet); it's recognised at `'shown'` (see above). GNOME 47-50 not tried by
+hand; the Mutter 50.0 source has the same signal order.
