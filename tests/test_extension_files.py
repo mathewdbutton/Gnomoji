@@ -99,6 +99,11 @@ def test_extension_places_the_picker_after_gnome_does():
     # 'window-created' is before GNOME's own placement; moving there would be undone.
     assert "move_frame" not in created
     assert "connect('shown'" in created
+    # On Wayland, 'window-created' is also before the app id is set, so the early return must
+    # only skip windows already known to be something else, not ones with no wm class yet.
+    assert "wmClass && wmClass !== APP_ID" in created
+    assert "connect('unmanaged'" in created
+    assert created.index("this._isPicker(window)") < created.index("this._place(window)")
     assert "move_frame(true, at.x, at.y)" in method("_place")
 
 
@@ -126,7 +131,8 @@ def test_disable_disconnects_placement_handlers():
     for fragment in (
         "global.display.disconnect(this._createdId)",
         "global.display.disconnect(this._grabEndId)",
-        "this._cancelShownWait()",
+        "this._cancelShownWait(window)",
+        "this._shownWaits = null;",
         "this._cursorAt = null;",
         "this._dragged = null;",
     ):

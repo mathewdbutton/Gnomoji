@@ -68,7 +68,7 @@ export default class EmojiPickerExtension extends Extension {
         this._pollId = 0;
         this._cursorAt = null; // the text cursor saved at the last double-tap
         this._dragged = null; // where the picker was last dragged, until log-out or screen lock
-        this._shownWait = null; // {window, id}: a new picker window we're waiting to see shown
+        this._shownWaits = new Map(); // window -> {shownId, unmanagedId}: pending 'shown' waits
         this._createdId = global.display.connect('window-created', (_display, window) => this._onWindowCreated(window));
         this._grabEndId = global.display.connect('grab-op-end', (_display, window) => this._onGrabEnd(window));
         this._tapId = global.connect('locate-pointer', () => this._onTap());
@@ -82,7 +82,9 @@ export default class EmojiPickerExtension extends Extension {
         global.disconnect(this._tapId);
         global.display.disconnect(this._createdId);
         global.display.disconnect(this._grabEndId);
-        this._cancelShownWait();
+        for (const window of Array.from(this._shownWaits.keys()))
+            this._cancelShownWait(window);
+        this._shownWaits = null;
         this._cursorAt = null;
         this._dragged = null;
         this._stopPolling();
@@ -125,25 +127,37 @@ export default class EmojiPickerExtension extends Extension {
         return window.get_wm_class() === APP_ID; // on Wayland, the app id
     }
 
-    // Hiding the picker destroys its window, so each opening is a new one. GNOME places a
-    // window when it's first shown, after 'window-created' (mutter window.c,
-    // meta_window_force_placement), so a move here would be undone: wait for 'shown', which
-    // comes after placement and before the next repaint.
+    // Can't recognise the picker here, and can't move it here either.
+    // On Wayland, 'window-created' fires while Mutter is still constructing the window, from
+    // xdg_surface.get_toplevel (meta-wayland-xdg-shell.c xdg_surface_constructor_get_toplevel
+    // -> meta_window_wayland_new -> window.c meta_window_initable_init ->
+    // meta_display_notify_window_created). The client's xdg_toplevel.set_app_id request, which
+    // sets the wm class (meta_window_set_wm_class, xdg-shell.c:281), arrives later - so
+    // get_wm_class() is still null here and this._isPicker() can't match yet (same order in
+    // Mutter 50.0). GNOME also places new windows after 'window-created' (mutter window.c,
+    // meta_window_force_placement), so a move here would be undone anyway even if it matched.
+    // Both the app id and GNOME's own placement are in by 'shown', so wait for that instead.
+    // Several windows can be created before any of them is shown, so each gets its own wait
+    // (this._shownWaits, a Map), cleared on 'unmanaged' if the window is destroyed first.
     _onWindowCreated(window) {
-        if (!this._isPicker(window))
-            return;
-        this._cancelShownWait();
-        const id = window.connect('shown', () => {
-            this._cancelShownWait();
-            this._place(window);
+        const wmClass = window.get_wm_class();
+        if (wmClass && wmClass !== APP_ID)
+            return; // already identified as something else; no need to wait for it
+        const shownId = window.connect('shown', () => {
+            this._cancelShownWait(window);
+            if (this._isPicker(window))
+                this._place(window);
         });
-        this._shownWait = {window, id};
+        const unmanagedId = window.connect('unmanaged', () => this._cancelShownWait(window));
+        this._shownWaits.set(window, {shownId, unmanagedId});
     }
 
-    _cancelShownWait() {
-        if (this._shownWait) {
-            this._shownWait.window.disconnect(this._shownWait.id);
-            this._shownWait = null;
+    _cancelShownWait(window) {
+        const wait = this._shownWaits.get(window);
+        if (wait) {
+            window.disconnect(wait.shownId);
+            window.disconnect(wait.unmanagedId);
+            this._shownWaits.delete(window);
         }
     }
 
@@ -160,6 +174,8 @@ export default class EmojiPickerExtension extends Extension {
         if (at) {
             window.move_frame(true, at.x, at.y);
             log(`placed the picker at ${at.x},${at.y}`);
+        } else {
+            log('picker shown, no position to use');
         }
     }
 
