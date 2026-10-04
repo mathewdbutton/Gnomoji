@@ -97,8 +97,12 @@ never in this file.
   46 and 50; set only while IBus runs; **not cleared when focus moves**, and **overwritten by the
   picker's own search box** once it opens, so it's read at the double-tap and must lie inside the
   window focused then). Hiding the picker destroys its window, so each opening is a new one; the
-  extension moves it on that window's `'shown'` signal. Not on `'window-created'`: GNOME places
-  windows after that (`meta_window_force_placement`) and would undo the move. Rules in
+  extension recognises and moves it only on that window's `'shown'` signal, never
+  `'window-created'`: on Wayland the wm class (app id) isn't set until `'shown'` (set by the
+  client's `xdg_toplevel.set_app_id`, after `'window-created'` fires), and GNOME places windows
+  after `'window-created'` too (`meta_window_force_placement`), so checking or moving there would
+  miss it or be undone. Each pending window gets its own `'shown'`/`'unmanaged'` wait (a `Map`),
+  since more than one can be created before any is shown. Rules in
   `extension/placement.js`: below the cursor, above it if there's no room, kept in the monitor's
   work area; otherwise the last-dragged spot (memory only, reset at log-out or screen lock:
   GNOME switches the extension off while locked); otherwise GNOME's placement.

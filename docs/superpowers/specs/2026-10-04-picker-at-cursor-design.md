@@ -53,14 +53,27 @@ text field has input-method focus. It also saves
 ### When the picker window appears
 
 Hiding the picker destroys its window; each opening creates a new `Meta.Window`. The extension
-connects to `global.display`'s `'window-created'` and recognises the picker by
-`window.get_wm_class() === 'local.emojipicker.EmojiPicker'` (on Wayland this is the app id).
-It can't move it there yet: in Mutter 46, `'window-created'` fires when the window object is
-made (`src/core/window.c:1357`), but GNOME only places the window later, in `meta_window_show`
-(`meta_window_force_placement`, line 2238), and `move_frame` doesn't mark a window as placed,
-so an early move would be overwritten. So it connects to that window's `'shown'` signal, which
-`meta_window_show` emits at its end (line 2386), after placement and before the next repaint,
-and disconnects it after the first emission. Then:
+connects to `global.display`'s `'window-created'`, but can't recognise the picker there, and
+can't move it there either.
+
+On Wayland, `'window-created'` fires while Mutter is still constructing the window, from
+`xdg_surface.get_toplevel` (`meta-wayland-xdg-shell.c` `xdg_surface_constructor_get_toplevel` ->
+`meta_window_wayland_new` -> `window.c` `meta_window_initable_init` ->
+`meta_display_notify_window_created`). The client's `xdg_toplevel.set_app_id` request, which
+sets the wm class (`meta_window_set_wm_class`, `xdg-shell.c:281`), arrives later — so
+`window.get_wm_class() === 'local.emojipicker.EmojiPicker'` can't match yet; `get_wm_class()` is
+still null (same order in Mutter 50.0). GNOME also only places the window later, in
+`meta_window_show` (`meta_window_force_placement`, line 2238), and `move_frame` doesn't mark a
+window as placed, so an early move would be overwritten anyway even if the window could be
+recognised.
+
+So every new window — unless it already has a different, known wm class, which needs no wait —
+gets a `'shown'` wait and an `'unmanaged'` wait, tracked per window in a `Map` (several windows
+can be created before any of them is shown, and a window destroyed before `'shown'` must drop
+its entry rather than being kept referenced). `meta_window_show` emits `'shown'` at its end
+(line 2386), after placement and before the next repaint — by which point the app id is also
+set, so that's where the picker is recognised (`get_wm_class() === APP_ID`). Both waits for that
+window are disconnected first; then, if it's the picker:
 
 1. Read the window's frame rect (its size is known by now).
 2. Ask `placement.js` for a position (below) and, if it returns one, `move_frame(true, x, y)`.
@@ -110,8 +123,10 @@ Mtk.Rectangle(...))`, then `Main.layoutManager.getWorkAreaForMonitor(index)`.
 
 ### Lifecycle
 
-`enable()` connects `'window-created'` and `'grab-op-end'`; `disable()` disconnects them (and any
-pending `'shown'` handler) and clears `_cursorAt` and `_dragged`.
+`enable()` connects `'window-created'` and `'grab-op-end'`, and creates the `Map` of pending
+`'shown'`/`'unmanaged'` waits. `disable()` disconnects `'window-created'` and `'grab-op-end'`,
+disconnects every pending window's `'shown'` and `'unmanaged'` handlers and clears the map (so
+nothing is left referencing a window after disable), and clears `_cursorAt` and `_dragged`.
 
 ### Opening without a double-tap
 
